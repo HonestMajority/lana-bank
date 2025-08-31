@@ -461,7 +461,7 @@ const CommandMenu = ({ open, onOpenChange }: CommandMenuProps) => {
           />
           <CreditFacilityPartialPaymentDialog
             creditFacilityId={facility.creditFacilityId}
-            publicId={facility.publicId}
+            userCanRecordPaymentWithDate={facility.userCanRecordPaymentWithDate}
             openDialog={makePayment}
             setOpenDialog={() => {
               setMakePayment(false)
@@ -469,7 +469,8 @@ const CommandMenu = ({ open, onOpenChange }: CommandMenuProps) => {
           />
           <CreditFacilityCollateralUpdateDialog
             creditFacilityId={facility.creditFacilityId}
-            publicId={facility.publicId}
+            currentCollateral={facility.balance.collateral.btcBalance}
+            collateralToMatchInitialCvl={facility.collateralToMatchInitialCvl}
             openDialog={openCollateralUpdateDialog}
             setOpenDialog={setOpenCollateralUpdateDialog}
           />

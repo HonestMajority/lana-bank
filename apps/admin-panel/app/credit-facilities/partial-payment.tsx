@@ -18,7 +18,6 @@ import { Label } from "@lana/web/ui/label"
 import {
   useCreditFacilityPartialPaymentMutation,
   useCreditFacilityPartialPaymentWithDateMutation,
-  useGetCreditFacilityLayoutDetailsQuery,
 } from "@/lib/graphql/generated"
 import { UsdCents } from "@/types"
 import { getCurrentLocalDate } from "@/lib/utils"
@@ -56,12 +55,12 @@ type CreditFacilityPartialPaymentDialogProps = {
   setOpenDialog: (isOpen: boolean) => void
   openDialog: boolean
   creditFacilityId: string
-  publicId: string
+  userCanRecordPaymentWithDate: boolean
 }
 
 export const CreditFacilityPartialPaymentDialog: React.FC<
   CreditFacilityPartialPaymentDialogProps
-> = ({ setOpenDialog, openDialog, creditFacilityId, publicId }) => {
+> = ({ setOpenDialog, openDialog, creditFacilityId, userCanRecordPaymentWithDate }) => {
   const t = useTranslations(
     "CreditFacilities.CreditFacilityDetails.CreditFacilityPartialPayment",
   )
@@ -76,13 +75,6 @@ export const CreditFacilityPartialPaymentDialog: React.FC<
   const [amount, setAmount] = useState<string>("")
   const [effectiveDate, setEffectiveDate] = useState<string>(getCurrentLocalDate())
 
-  const { data: creditFacilityDetails } = useGetCreditFacilityLayoutDetailsQuery({
-    variables: { publicId },
-  })
-
-  const canRecordWithDate =
-    creditFacilityDetails?.creditFacilityByPublicId?.userCanRecordPaymentWithDate ?? false
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -95,7 +87,7 @@ export const CreditFacilityPartialPaymentDialog: React.FC<
     }
 
     try {
-      if (canRecordWithDate) {
+      if (userCanRecordPaymentWithDate) {
         await partialPaymentWithDateCreditFacility({
           variables: {
             input: {
@@ -177,7 +169,7 @@ export const CreditFacilityPartialPaymentDialog: React.FC<
               type="date"
               value={effectiveDate}
               onChange={(e) => setEffectiveDate(e.target.value)}
-              disabled={!canRecordWithDate}
+              disabled={!userCanRecordPaymentWithDate}
               required
             />
           </div>

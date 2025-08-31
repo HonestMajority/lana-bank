@@ -16,10 +16,7 @@ import { Input } from "@lana/web/ui/input"
 
 import { Label } from "@lana/web/ui/label"
 
-import {
-  useCreditFacilityCollateralUpdateMutation,
-  useGetCreditFacilityLayoutDetailsQuery,
-} from "@/lib/graphql/generated"
+import { useCreditFacilityCollateralUpdateMutation } from "@/lib/graphql/generated"
 import { DetailItem, DetailsGroup } from "@/components/details"
 import { currencyConverter, getCurrentLocalDate } from "@/lib/utils"
 import Balance from "@/components/balance/balance"
@@ -48,12 +45,19 @@ type CreditFacilityCollateralUpdateDialogProps = {
   setOpenDialog: (isOpen: boolean) => void
   openDialog: boolean
   creditFacilityId: string
-  publicId: string
+  currentCollateral: Satoshis
+  collateralToMatchInitialCvl?: Satoshis | null
 }
 
 export const CreditFacilityCollateralUpdateDialog: React.FC<
   CreditFacilityCollateralUpdateDialogProps
-> = ({ setOpenDialog, openDialog, creditFacilityId, publicId }) => {
+> = ({
+  setOpenDialog,
+  openDialog,
+  creditFacilityId,
+  currentCollateral,
+  collateralToMatchInitialCvl,
+}) => {
   const t = useTranslations(
     "CreditFacilities.CreditFacilityDetails.CreditFacilityCollateralUpdate",
   )
@@ -63,10 +67,6 @@ export const CreditFacilityCollateralUpdateDialog: React.FC<
   const [error, setError] = useState<string | null>(null)
   const [isConfirmed, setIsConfirmed] = useState<boolean>(false)
   const [newCollateral, setNewCollateral] = useState<string>("")
-
-  const { data: creditFacilityDetails } = useGetCreditFacilityLayoutDetailsQuery({
-    variables: { publicId },
-  })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -112,9 +112,6 @@ export const CreditFacilityCollateralUpdateDialog: React.FC<
     setOpenDialog(false)
     setNewCollateral("")
   }
-
-  const currentCollateral =
-    creditFacilityDetails?.creditFacilityByPublicId?.balance?.collateral?.btcBalance || 0
 
   return (
     <Dialog open={openDialog} onOpenChange={handleCloseDialog}>
@@ -193,18 +190,11 @@ export const CreditFacilityCollateralUpdateDialog: React.FC<
                     }
                     data-testid="current-collateral-balance"
                   />
-                  {creditFacilityDetails?.creditFacilityByPublicId
-                    ?.collateralToMatchInitialCvl && (
+                  {collateralToMatchInitialCvl && (
                     <DetailItem
                       label={t("form.labels.expectedCollateral")}
                       value={
-                        <Balance
-                          amount={
-                            creditFacilityDetails?.creditFacilityByPublicId
-                              ?.collateralToMatchInitialCvl
-                          }
-                          currency="btc"
-                        />
+                        <Balance amount={collateralToMatchInitialCvl} currency="btc" />
                       }
                       data-testid="expected-collateral-balance"
                     />
