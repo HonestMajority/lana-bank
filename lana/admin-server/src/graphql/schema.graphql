@@ -1260,7 +1260,8 @@ enum Layer {
 }
 
 type LedgerAccount {
-	id: UUID!
+	id: ID!
+	ledgerAccountId: UUID!
 	code: AccountCode
 	name: String!
 	normalBalanceType: DebitOrCredit!
