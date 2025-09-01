@@ -1,8 +1,8 @@
 #![cfg_attr(feature = "fail-on-warnings", deny(warnings))]
 #![cfg_attr(feature = "fail-on-warnings", deny(clippy::all))]
 
-use opentelemetry::{KeyValue, global};
-use opentelemetry_otlp::SpanExporter;
+use opentelemetry::{KeyValue, global, trace::TracerProvider};
+use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{
     Resource,
     propagation::TraceContextPropagator,
@@ -30,7 +30,13 @@ impl Default for TracingConfig {
 pub fn init_tracer(config: TracingConfig) -> anyhow::Result<()> {
     global::set_text_map_propagator(TraceContextPropagator::new());
 
-    let exporter = SpanExporter::builder().with_tonic().build()?;
+    let endpoint = std::env::var("OTEL_EXPORTER_OTLP_ENDPOINT")
+        .unwrap_or_else(|_| "http://localhost:4317".to_string());
+
+    let exporter = opentelemetry_otlp::SpanExporter::builder()
+        .with_tonic()
+        .with_endpoint(endpoint)
+        .build()?;
 
     let provider = SdkTracerProvider::builder()
         .with_resource(telemetry_resource(&config))
@@ -39,7 +45,8 @@ pub fn init_tracer(config: TracingConfig) -> anyhow::Result<()> {
         .build();
 
     global::set_tracer_provider(provider.clone());
-    let telemetry = tracing_opentelemetry::layer();
+    let tracer = provider.tracer("lana-tracer");
+    let telemetry = tracing_opentelemetry::layer().with_tracer(tracer);
 
     let fmt_layer = fmt::layer().json();
     let filter_layer = EnvFilter::try_from_default_env()
