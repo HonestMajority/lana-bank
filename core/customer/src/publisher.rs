@@ -44,13 +44,13 @@ where
                     email: entity.email.clone(),
                     customer_type: entity.customer_type,
                 }),
-                StatusUpdated { status, .. } => {
-                    Some(CoreCustomerEvent::CustomerAccountStatusUpdated {
-                        id: entity.id,
-                        status: *status,
-                        customer_type: entity.customer_type,
-                    })
-                }
+                KycVerificationUpdated {
+                    kyc_verification, ..
+                } => Some(CoreCustomerEvent::CustomerAccountKycVerificationUpdated {
+                    id: entity.id,
+                    kyc_verification: *kyc_verification,
+                    customer_type: entity.customer_type,
+                }),
                 EmailUpdated { email, .. } => Some(CoreCustomerEvent::CustomerEmailUpdated {
                     id: entity.id,
                     email: email.clone(),

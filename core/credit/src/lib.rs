@@ -468,8 +468,8 @@ where
             .expect("audit info missing");
 
         let customer = self.customer.find_by_id_without_audit(customer_id).await?;
-        if self.config.customer_active_check_enabled && customer.status.is_inactive() {
-            return Err(CoreCreditError::CustomerNotActive);
+        if self.config.customer_active_check_enabled && !customer.kyc_verification.is_verified() {
+            return Err(CoreCreditError::CustomerNotVerified);
         }
 
         let proposal_id = CreditFacilityProposalId::new();
@@ -548,8 +548,8 @@ where
 
         let customer = self.customer.find_by_id_without_audit(customer_id).await?;
 
-        if self.config.customer_active_check_enabled && customer.status.is_inactive() {
-            return Err(CoreCreditError::CustomerNotActive);
+        if self.config.customer_active_check_enabled && !customer.kyc_verification.is_verified() {
+            return Err(CoreCreditError::CustomerNotVerified);
         }
 
         let id = CreditFacilityId::new();
@@ -694,8 +694,8 @@ where
 
         let customer_id = facility.customer_id;
         let customer = self.customer.find_by_id_without_audit(customer_id).await?;
-        if self.config.customer_active_check_enabled && customer.status.is_inactive() {
-            return Err(CoreCreditError::CustomerNotActive);
+        if self.config.customer_active_check_enabled && !customer.kyc_verification.is_verified() {
+            return Err(CoreCreditError::CustomerNotVerified);
         }
 
         if !facility.is_activated() {

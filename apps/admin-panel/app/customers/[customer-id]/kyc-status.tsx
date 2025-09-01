@@ -10,6 +10,8 @@ import { toast } from "sonner"
 
 import { Skeleton } from "@lana/web/ui/skeleton"
 
+import { KycStatusBadge } from "@/app/customers/kyc-status-badge"
+
 import {
   useGetKycStatusForCustomerQuery,
   useSumsubPermalinkCreateMutation,
@@ -21,7 +23,7 @@ gql`
   query GetKycStatusForCustomer($id: UUID!) {
     customer(id: $id) {
       customerId
-      status
+      kycVerification
       level
       applicantId
     }
@@ -121,5 +123,12 @@ export const KycStatus: React.FC<KycStatusProps> = ({ customerId }) => {
     },
   ]
 
-  return <DetailsCard title={t("title")} details={details} className="w-full md:w-1/2" />
+  return (
+    <DetailsCard
+      title={t("title")}
+      badge={<KycStatusBadge status={data?.customer?.kycVerification} />}
+      details={details}
+      className="w-full md:w-1/2"
+    />
+  )
 }

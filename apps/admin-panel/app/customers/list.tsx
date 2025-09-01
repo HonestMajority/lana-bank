@@ -5,7 +5,7 @@ import { useState } from "react"
 import { useTranslations } from "next-intl"
 
 import {
-  CustomerStatus,
+  KycVerification,
   Customer,
   CustomersFilter,
   CustomersSort,
@@ -34,7 +34,8 @@ gql`
           id
           customerId
           publicId
-          status
+          kycVerification
+          activity
           level
           email
           telegramId
@@ -76,16 +77,18 @@ const CustomersList = () => {
     { key: "email", label: t("columns.email"), sortable: true },
     { key: "telegramId", label: t("columns.telegramId"), sortable: true },
     {
-      key: "status",
-      label: t("columns.status"),
-      filterValues: Object.values(CustomerStatus),
+      key: "kycVerification",
+      label: t("columns.kycVerification"),
+      filterValues: Object.values(KycVerification),
       render: (status) => (
         <div
           className={
-            status === CustomerStatus.Inactive ? "text-error font-medium" : undefined
+            status === KycVerification.Verified
+              ? "text-success font-medium"
+              : "text-error font-medium"
           }
         >
-          {status === CustomerStatus.Active
+          {status === KycVerification.Verified
             ? t("status.verified")
             : t("status.notVerified")}
         </div>
@@ -122,8 +125,8 @@ const CustomersList = () => {
         onFilter={(column, value) => {
           if (value)
             setFilter({
-              field: (column === "status"
-                ? "ACCOUNT_STATUS"
+              field: (column === "kycVerification"
+                ? "ACCOUNT_KYC_VERIFICATION"
                 : null) as CustomersFilter["field"],
               [column]: value,
             })

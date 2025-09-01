@@ -4,7 +4,7 @@ use tracing::instrument;
 
 use audit::{AuditSvc, SystemSubject};
 use authz::PermissionCheck;
-use core_customer::{CoreCustomerAction, CoreCustomerEvent, CustomerObject, CustomerStatus};
+use core_customer::{CoreCustomerAction, CoreCustomerEvent, CustomerObject, KycVerification};
 use core_deposit::{
     CoreDeposit, CoreDepositAction, CoreDepositEvent, CoreDepositObject, DepositAccountStatus,
     GovernanceAction, GovernanceObject,
@@ -146,7 +146,7 @@ where
         let mut stream = self.outbox.listen_persisted(Some(state.sequence)).await?;
 
         while let Some(message) = stream.next().await {
-            if let Some(CoreCustomerEvent::CustomerAccountStatusUpdated { .. }) =
+            if let Some(CoreCustomerEvent::CustomerAccountKycVerificationUpdated { .. }) =
                 &message.as_ref().as_event()
             {
                 self.handle_status_updated(message.as_ref()).await?;
@@ -178,22 +178,27 @@ where
     where
         E: OutboxEventMarker<CoreCustomerEvent>,
     {
-        if let Some(CoreCustomerEvent::CustomerAccountStatusUpdated { id, status, .. }) =
-            message.as_event()
+        if let Some(CoreCustomerEvent::CustomerAccountKycVerificationUpdated {
+            id,
+            kyc_verification,
+            ..
+        }) = message.as_event()
         {
             message.inject_trace_parent();
 
             if self.config.customer_status_sync_active {
-                let deposit_status = match status {
-                    CustomerStatus::Inactive => DepositAccountStatus::Inactive,
-                    CustomerStatus::Active => DepositAccountStatus::Active,
+                let deposit_account_status = match kyc_verification {
+                    KycVerification::Rejected | KycVerification::PendingVerification => {
+                        DepositAccountStatus::Inactive
+                    }
+                    KycVerification::Verified => DepositAccountStatus::Active,
                 };
 
                 self.deposit
                     .update_account_status_for_holder(
                         &<<Perms as PermissionCheck>::Audit as AuditSvc>::Subject::system(),
                         *id,
-                        deposit_status,
+                        deposit_account_status,
                     )
                     .await?;
             }

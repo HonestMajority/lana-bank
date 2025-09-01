@@ -17,7 +17,7 @@ import FreezeDepositAccountDialog from "./freeze-deposit-account"
 
 import { DetailsCard, DetailItemProps } from "@/components/details"
 import {
-  CustomerStatus,
+  Activity,
   CustomerType,
   GetCustomerBasicDetailsQuery,
   DepositAccountStatus,
@@ -76,11 +76,19 @@ export const CustomerDetailsCard: React.FC<CustomerDetailsCardProps> = ({ custom
       label: t("labels.status"),
       value: (
         <Badge
-          variant={customer.status === CustomerStatus.Active ? "success" : "secondary"}
+          variant={
+            customer.activity === Activity.Active
+              ? "success"
+              : customer.activity === Activity.Inactive
+                ? "secondary"
+                : "destructive"
+          }
         >
-          {customer.status === CustomerStatus.Active
+          {customer.activity === Activity.Active
             ? t("status.active")
-            : t("status.inactive")}
+            : customer.activity === Activity.Inactive
+              ? t("status.inactive")
+              : t("status.suspended")}
         </Badge>
       ),
     },

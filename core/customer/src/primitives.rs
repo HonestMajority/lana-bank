@@ -38,10 +38,11 @@ pub enum KycLevel {
 #[cfg_attr(feature = "graphql", derive(async_graphql::Enum))]
 #[cfg_attr(feature = "json-schema", derive(schemars::JsonSchema))]
 #[serde(rename_all = "kebab-case")]
-pub enum CustomerStatus {
+pub enum KycVerification {
     #[default]
-    Inactive,
-    Active,
+    PendingVerification,
+    Verified,
+    Rejected,
 }
 
 #[derive(
@@ -64,8 +65,8 @@ pub enum CustomerStatus {
 #[sqlx(type_name = "text")]
 pub enum Activity {
     #[default]
-    Disabled,
-    Enabled,
+    Inactive,
+    Active,
     Suspended,
 }
 
@@ -96,9 +97,9 @@ impl Display for CustomerType {
     }
 }
 
-impl CustomerStatus {
-    pub fn is_inactive(&self) -> bool {
-        matches!(self, CustomerStatus::Inactive)
+impl KycVerification {
+    pub fn is_verified(&self) -> bool {
+        matches!(self, KycVerification::Verified)
     }
 }
 

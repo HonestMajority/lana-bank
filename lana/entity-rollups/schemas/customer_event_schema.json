@@ -2,16 +2,9 @@
   "$defs": {
     "Activity": {
       "enum": [
-        "disabled",
-        "enabled",
-        "suspended"
-      ],
-      "type": "string"
-    },
-    "CustomerStatus": {
-      "enum": [
         "inactive",
-        "active"
+        "active",
+        "suspended"
       ],
       "type": "string"
     },
@@ -32,6 +25,14 @@
         "NotKyced",
         "Basic",
         "Advanced"
+      ],
+      "type": "string"
+    },
+    "KycVerification": {
+      "enum": [
+        "pending-verification",
+        "verified",
+        "rejected"
       ],
       "type": "string"
     }
@@ -129,17 +130,17 @@
     },
     {
       "properties": {
-        "status": {
-          "$ref": "#/$defs/CustomerStatus"
+        "kyc_verification": {
+          "$ref": "#/$defs/KycVerification"
         },
         "type": {
-          "const": "status_updated",
+          "const": "kyc_verification_updated",
           "type": "string"
         }
       },
       "required": [
         "type",
-        "status"
+        "kyc_verification"
       ],
       "type": "object"
     },

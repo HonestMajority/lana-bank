@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH entities AS (SELECT status, email, id FROM core_customers WHERE ((status = $1) AND (COALESCE((email, id) < ($4, $3), $3 IS NULL))) ORDER BY email DESC, id DESC LIMIT $2) SELECT i.id AS \"entity_id: Repo__Id\", e.sequence, e.event, e.recorded_at FROM entities i JOIN core_customer_events e ON i.id = e.id ORDER BY i.email desc, i.id desc, i.id, e.sequence",
+  "query": "WITH entities AS (SELECT kyc_verification, id FROM core_customers WHERE ((kyc_verification = $1) AND (COALESCE(id > $3, true))) ORDER BY id ASC LIMIT $2) SELECT i.id AS \"entity_id: Repo__Id\", e.sequence, e.event, e.recorded_at FROM entities i JOIN core_customer_events e ON i.id = e.id ORDER BY i.id asc, i.id, e.sequence",
   "describe": {
     "columns": [
       {
@@ -28,8 +28,7 @@
       "Left": [
         "Text",
         "Int8",
-        "Uuid",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -39,5 +38,5 @@
       false
     ]
   },
-  "hash": "c5beb89cbe682f9ac2448aed0a4c79e1ad57bd678fddd13f05052d864f6d9fd2"
+  "hash": "5bfb18011a3a2d27e10abc5fb086e2f4a1b0245af99b3bead1735545680be7e5"
 }
