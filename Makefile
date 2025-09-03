@@ -191,8 +191,9 @@ bq-drop-old-run:
 bq-drop-all-run:
 	meltano run drop-all-relations
 
-bq-drop-all-dataset-run:
-	meltano run drop-all-dataset-relations
+# Meltano EL writes into a different BQ dataset than dbt. This empties that dataset.
+bq-drop-meltano-landing:
+	bq ls -n 100000 --project_id=$(DBT_BIGQUERY_PROJECT) $(TARGET_BIGQUERY_DATASET) | awk 'NR>2 {print $$1}' | xargs -P 32 -n1 -I{} bash -c 'echo "Deleting: $(DBT_BIGQUERY_PROJECT):$(TARGET_BIGQUERY_DATASET).{}"; bq rm -f -t $(DBT_BIGQUERY_PROJECT):$(TARGET_BIGQUERY_DATASET).{}'
 
 create-airflow-admin:
 	meltano invoke airflow users create -e admin@galoy.io -f Admin -l Galoy -u admin -p admin --role Admin
