@@ -992,6 +992,7 @@ export type DepositAccount = {
   deposits: Array<Deposit>;
   history: DepositAccountHistoryEntryConnection;
   id: Scalars['ID']['output'];
+  ledgerAccounts: DepositAccountLedgerAccounts;
   publicId: Scalars['PublicId']['output'];
   status: DepositAccountStatus;
   withdrawals: Array<Withdrawal>;
@@ -1037,6 +1038,14 @@ export type DepositAccountHistoryEntryEdge = {
   cursor: Scalars['String']['output'];
   /** The item at the end of the edge */
   node: DepositAccountHistoryEntry;
+};
+
+export type DepositAccountLedgerAccounts = {
+  __typename?: 'DepositAccountLedgerAccounts';
+  depositAccountId: Scalars['UUID']['output'];
+  frozenDepositAccount: LedgerAccount;
+  frozenDepositAccountId: Scalars['UUID']['output'];
+  ledgerAccount: LedgerAccount;
 };
 
 export enum DepositAccountStatus {

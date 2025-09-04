@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use audit::AuditInfo;
 use core_accounting::EntityRef;
 
+mod deposit_accounts;
 pub mod error;
 mod templates;
 mod velocity;
@@ -25,6 +26,7 @@ use crate::{
     },
 };
 
+pub(super) use deposit_accounts::*;
 use error::*;
 
 pub const DEPOSIT_INDIVIDUAL_ACCOUNT_SET_NAME: &str = "Deposit Individual Account Set";
@@ -607,8 +609,8 @@ impl DepositLedger {
 
         let params = templates::FreezeAccountParams {
             journal_id: self.journal_id,
-            account_id: account.ledger_account_id,
-            frozen_accounts_account_id: account.frozen_deposit_account_id,
+            account_id: account.account_ids.deposit_account_id,
+            frozen_accounts_account_id: account.account_ids.frozen_deposit_account_id,
             amount: balance.settled.to_usd(),
             currency: self.usd,
         };
@@ -738,7 +740,7 @@ impl DepositLedger {
         let frozen_deposit_account_name = format!("Frozen Deposit Account {holder_id}");
         self.create_account_in_op(
             &mut op,
-            account.frozen_deposit_account_id,
+            account.account_ids.frozen_deposit_account_id,
             self.frozen_deposit_internal_account_set_from_type(deposit_account_type),
             &format!("frozen-deposit-customer-account:{holder_id}"),
             &frozen_deposit_account_name,
