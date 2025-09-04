@@ -1367,7 +1367,7 @@ export type LedgerAccountEdge = {
   node: LedgerAccount;
 };
 
-export type LedgerAccountEntity = DepositAccount;
+export type LedgerAccountEntity = CreditFacility | DepositAccount;
 
 export type LedgerTransaction = {
   __typename?: 'LedgerTransaction';

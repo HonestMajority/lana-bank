@@ -1355,7 +1355,7 @@ type LedgerAccountEdge {
 	cursor: String!
 }
 
-union LedgerAccountEntity = DepositAccount
+union LedgerAccountEntity = DepositAccount | CreditFacility
 
 type LedgerTransaction {
 	id: ID!
