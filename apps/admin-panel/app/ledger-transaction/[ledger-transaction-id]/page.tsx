@@ -41,6 +41,7 @@ gql`
         layer
         ledgerAccount {
           id
+          ledgerAccountId
           code
           name
           closestAccountWithCode {
@@ -99,18 +100,13 @@ const LedgerTransactionPage: React.FC<LedgerTransactionPageProps> = ({ params })
             data={data?.ledgerTransaction?.entries || []}
             columns={[
               {
-                key: "layer",
-                header: t("table.layer"),
-                render: (layer) => <LayerLabel value={layer} />,
-              },
-              {
                 key: "ledgerAccount",
                 header: t("table.ledgerAccount"),
                 render: (account) => {
                   const accountName = account.name || account.code
                   return (
                     <Link
-                      href={`/ledger-accounts/${account.code || account.id}`}
+                      href={`/ledger-accounts/${account.code || account.ledgerAccountId}`}
                       className="hover:underline"
                     >
                       {accountName}
@@ -119,6 +115,27 @@ const LedgerTransactionPage: React.FC<LedgerTransactionPageProps> = ({ params })
                 },
               },
               { key: "entryType", header: t("table.entryType") },
+              {
+                key: "ledgerAccount",
+                header: t("table.closestAccountWithCode"),
+                render: (_, record) => {
+                  const closestAccountWithCode =
+                    record.ledgerAccount?.closestAccountWithCode?.code
+                  return (
+                    <Link
+                      href={`/ledger-accounts/${closestAccountWithCode}`}
+                      className="hover:underline"
+                    >
+                      {closestAccountWithCode}
+                    </Link>
+                  )
+                },
+              },
+              {
+                key: "layer",
+                header: t("table.layer"),
+                render: (layer) => <LayerLabel value={layer} />,
+              },
               {
                 key: "direction",
                 header: t("table.debit"),
@@ -141,22 +158,6 @@ const LedgerTransactionPage: React.FC<LedgerTransactionPageProps> = ({ params })
                   } else if (record.amount.__typename === "BtcAmount") {
                     return <Balance amount={record?.amount.btc} currency="btc" />
                   }
-                },
-              },
-              {
-                key: "ledgerAccount",
-                header: t("table.closestAccountWithCode"),
-                render: (_, record) => {
-                  const closestAccountWithCode =
-                    record.ledgerAccount?.closestAccountWithCode?.code
-                  return (
-                    <Link
-                      href={`/ledger-accounts/${closestAccountWithCode}`}
-                      className="hover:underline"
-                    >
-                      {closestAccountWithCode}
-                    </Link>
-                  )
                 },
               },
             ]}

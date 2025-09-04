@@ -187,11 +187,6 @@ const LedgerAccountPage: React.FC<LedgerAccountPageProps> = ({ params }) => {
       render: (recordedAt: string) => <DateWithTooltip value={recordedAt} />,
     },
     {
-      key: "layer",
-      label: t("table.columns.layer"),
-      render: (layer) => <LayerLabel value={layer} />,
-    },
-    {
       key: "ledgerTransaction",
       label: t("table.columns.transactionId"),
       render: (_, record) => {
@@ -219,9 +214,9 @@ const LedgerAccountPage: React.FC<LedgerAccountPageProps> = ({ params }) => {
       },
     },
     {
-      key: "amount",
-      label: t("table.columns.currency"),
-      render: (amount) => <div>{amount.__typename === "UsdAmount" ? "USD" : "BTC"}</div>,
+      key: "layer",
+      label: t("table.columns.layer"),
+      render: (layer) => <LayerLabel value={layer} />,
     },
     {
       key: "__typename",
