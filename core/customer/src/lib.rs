@@ -1,6 +1,8 @@
 #![cfg_attr(feature = "fail-on-warnings", deny(warnings))]
 #![cfg_attr(feature = "fail-on-warnings", deny(clippy::all))]
 
+mod config;
+mod customer_activity_repo;
 mod entity;
 pub mod error;
 mod event;
@@ -8,6 +10,7 @@ mod primitives;
 mod publisher;
 mod repo;
 
+use chrono::{DateTime, Utc};
 use std::collections::HashMap;
 use tracing::instrument;
 
@@ -19,6 +22,8 @@ use document_storage::{
 use outbox::{Outbox, OutboxEventMarker};
 use public_id::PublicIds;
 
+pub use config::*;
+pub use customer_activity_repo::CustomerActivityRepo;
 pub use entity::Customer;
 use entity::*;
 use error::*;
@@ -43,8 +48,10 @@ where
     authz: Perms,
     outbox: Outbox<E>,
     repo: CustomerRepo<E>,
+    customer_activity_repo: CustomerActivityRepo,
     document_storage: DocumentStorage,
     public_ids: PublicIds,
+    config: CustomerConfig,
 }
 
 impl<Perms, E> Clone for Customers<Perms, E>
@@ -57,8 +64,10 @@ where
             authz: self.authz.clone(),
             outbox: self.outbox.clone(),
             repo: self.repo.clone(),
+            customer_activity_repo: self.customer_activity_repo.clone(),
             document_storage: self.document_storage.clone(),
             public_ids: self.public_ids.clone(),
+            config: self.config.clone(),
         }
     }
 }
@@ -79,12 +88,15 @@ where
     ) -> Self {
         let publisher = CustomerPublisher::new(outbox);
         let repo = CustomerRepo::new(pool, &publisher);
+        let customer_activity_repo = CustomerActivityRepo::new(pool.clone());
         Self {
             repo,
             authz: authz.clone(),
             outbox: outbox.clone(),
+            customer_activity_repo,
             document_storage,
             public_ids: public_id_service,
+            config: CustomerConfig::default(),
         }
     }
 
@@ -541,18 +553,75 @@ where
         Ok(result)
     }
 
-    #[instrument(name = "customer.update_activity_from_system", skip(self), err)]
-    pub async fn update_activity_from_system(
+    #[instrument(name = "customer.record_last_activity_date", skip(self), err)]
+    pub async fn record_last_activity_date(
         &self,
         customer_id: CustomerId,
-        activity: Activity,
-    ) -> Result<Customer, CustomerError> {
-        let mut customer = self.repo.find_by_id(customer_id).await?;
+        activity_date: DateTime<Utc>,
+    ) -> Result<(), CustomerError> {
+        self.customer_activity_repo
+            .upsert_activity(customer_id, activity_date)
+            .await?;
+        Ok(())
+    }
 
-        if customer.update_activity(activity).did_execute() {
-            self.repo.update(&mut customer).await?;
+    async fn update_customers_by_activity_and_date_range(
+        &self,
+        start_threshold: DateTime<Utc>,
+        end_threshold: DateTime<Utc>,
+        activity: Activity,
+    ) -> Result<(), CustomerError> {
+        let customer_ids = self
+            .customer_activity_repo
+            .find_customers_in_range_with_non_matching_activity(
+                start_threshold,
+                end_threshold,
+                activity,
+            )
+            .await?;
+        // TODO: Add a batch update for the customers
+        for customer_id in customer_ids {
+            let mut customer = self.repo.find_by_id(customer_id).await?;
+            if customer.update_activity(activity).did_execute() {
+                self.repo.update(&mut customer).await?;
+            }
         }
 
-        Ok(customer)
+        Ok(())
+    }
+
+    #[instrument(
+        name = "customer.perform_customer_activity_status_update",
+        skip(self),
+        err
+    )]
+    pub async fn perform_customer_activity_status_update(
+        &self,
+        now: DateTime<Utc>,
+    ) -> Result<(), CustomerError> {
+        let ranges = vec![
+            (
+                EARLIEST_SEARCH_START,
+                self.config.get_escheatment_threshold_date(now),
+                Activity::Suspended,
+            ),
+            (
+                self.config.get_escheatment_threshold_date(now),
+                self.config.get_inactive_threshold_date(now),
+                Activity::Inactive,
+            ),
+            (
+                self.config.get_inactive_threshold_date(now),
+                now,
+                Activity::Active,
+            ),
+        ];
+
+        for (start, end, activity) in ranges {
+            self.update_customers_by_activity_and_date_range(start, end, activity)
+                .await?;
+        }
+
+        Ok(())
     }
 }
