@@ -22,7 +22,8 @@ use crate::{
     WithdrawalReversalData,
     chart_of_accounts_integration::ChartOfAccountsIntegrationConfig,
     primitives::{
-        CalaAccountId, CalaAccountSetId, DEPOSIT_ACCOUNT_ENTITY_TYPE, DepositAccountType, UsdCents,
+        CalaAccountId, CalaAccountSetId, DEPOSIT_ACCOUNT_ENTITY_TYPE, DepositAccountType,
+        DepositId, UsdCents, WithdrawalId,
     },
 };
 
@@ -478,17 +479,17 @@ impl DepositLedger {
     pub async fn record_deposit(
         &self,
         op: es_entity::DbOp<'_>,
-        tx_id: impl Into<TransactionId>,
+        entity_id: DepositId,
         amount: UsdCents,
         credit_account_id: impl Into<AccountId>,
     ) -> Result<(), DepositLedgerError> {
-        let tx_id = tx_id.into();
+        let tx_id = entity_id.into();
         let mut op = self
             .cala
             .ledger_operation_from_db_op(op.with_db_time().await?);
 
         let params = templates::RecordDepositParams {
-            entity_id: tx_id.into(),
+            entity_id: entity_id.into(),
             journal_id: self.journal_id,
             currency: self.usd,
             amount: amount.to_usd(),
@@ -506,16 +507,17 @@ impl DepositLedger {
     pub async fn initiate_withdrawal(
         &self,
         op: es_entity::DbOp<'_>,
-        tx_id: impl Into<TransactionId>,
+        entity_id: WithdrawalId,
         amount: UsdCents,
         credit_account_id: impl Into<AccountId>,
     ) -> Result<(), DepositLedgerError> {
-        let tx_id = tx_id.into();
+        let tx_id = entity_id.into();
         let mut op = self
             .cala
             .ledger_operation_from_db_op(op.with_db_time().await?);
 
         let params = templates::InitiateWithdrawParams {
+            entity_id: entity_id.into(),
             journal_id: self.journal_id,
             deposit_omnibus_account_id: self.deposit_omnibus_account_ids.account_id,
             credit_account_id: credit_account_id.into(),
@@ -541,6 +543,7 @@ impl DepositLedger {
             .ledger_operation_from_db_op(op.with_db_time().await?);
 
         let params = templates::RevertWithdrawParams {
+            entity_id: reversal_data.entity_id.into(),
             journal_id: self.journal_id,
             deposit_omnibus_account_id: self.deposit_omnibus_account_ids.account_id,
             credit_account_id: reversal_data.credit_account_id.into(),
@@ -632,6 +635,7 @@ impl DepositLedger {
     pub async fn confirm_withdrawal(
         &self,
         op: es_entity::DbOp<'_>,
+        entity_id: WithdrawalId,
         tx_id: impl Into<TransactionId>,
         correlation_id: String,
         amount: UsdCents,
@@ -644,6 +648,7 @@ impl DepositLedger {
             .ledger_operation_from_db_op(op.with_db_time().await?);
 
         let params = templates::ConfirmWithdrawParams {
+            entity_id: entity_id.into(),
             journal_id: self.journal_id,
             currency: self.usd,
             amount: amount.to_usd(),
@@ -663,6 +668,7 @@ impl DepositLedger {
     pub async fn cancel_withdrawal(
         &self,
         op: es_entity::DbOp<'_>,
+        entity_id: WithdrawalId,
         tx_id: impl Into<TransactionId>,
         amount: UsdCents,
         credit_account_id: impl Into<AccountId>,
@@ -673,6 +679,7 @@ impl DepositLedger {
             .ledger_operation_from_db_op(op.with_db_time().await?);
 
         let params = templates::CancelWithdrawParams {
+            entity_id: entity_id.into(),
             journal_id: self.journal_id,
             currency: self.usd,
             amount: amount.to_usd(),

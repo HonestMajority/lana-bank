@@ -112,8 +112,8 @@ pub mod deposit {
         ChartOfAccountsIntegrationConfig, CoreDepositEvent, DEPOSIT_ACCOUNT_ENTITY_TYPE,
         DEPOSIT_TRANSACTION_ENTITY_TYPE, Deposit, DepositAccount, DepositAccountBalance,
         DepositAccountHistoryCursor, DepositAccountHistoryEntry, DepositAccountStatus, DepositId,
-        DepositStatus, DepositsByCreatedAtCursor, Withdrawal, WithdrawalId, WithdrawalStatus,
-        WithdrawalsByCreatedAtCursor, error,
+        DepositStatus, DepositsByCreatedAtCursor, WITHDRAWAL_TRANSACTION_ENTITY_TYPE, Withdrawal,
+        WithdrawalId, WithdrawalStatus, WithdrawalsByCreatedAtCursor, error,
     };
 
     pub type Deposits =

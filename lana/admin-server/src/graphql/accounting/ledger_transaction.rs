@@ -4,11 +4,11 @@ pub use lana_app::{
     accounting::ledger_transaction::{
         LedgerTransaction as DomainLedgerTransaction, LedgerTransactionCursor,
     },
-    deposit::DEPOSIT_TRANSACTION_ENTITY_TYPE,
+    deposit::{DEPOSIT_TRANSACTION_ENTITY_TYPE, WITHDRAWAL_TRANSACTION_ENTITY_TYPE},
 };
 
 use crate::{
-    graphql::{deposit::Deposit, loader::*},
+    graphql::{deposit::Deposit, loader::*, withdrawal::Withdrawal},
     primitives::*,
 };
 
@@ -27,6 +27,7 @@ pub struct LedgerTransaction {
 #[derive(Union)]
 pub enum LedgerTransactionEntity {
     Deposit(Deposit),
+    Withdrawal(Withdrawal),
 }
 
 #[ComplexObject]
@@ -48,8 +49,15 @@ impl LedgerTransaction {
                 let deposit = loader
                     .load_one(DepositId::from(entity_ref.entity_id))
                     .await?
-                    .expect("Could not find deposit account");
+                    .expect("Could not find deposit entity");
                 Some(LedgerTransactionEntity::Deposit(deposit))
+            }
+            entity_type if entity_type == &WITHDRAWAL_TRANSACTION_ENTITY_TYPE => {
+                let withdrawal = loader
+                    .load_one(WithdrawalId::from(entity_ref.entity_id))
+                    .await?
+                    .expect("Could not find withdrawal entity");
+                Some(LedgerTransactionEntity::Withdrawal(withdrawal))
             }
             _ => None,
         };
