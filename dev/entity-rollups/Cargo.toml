@@ -1,0 +1,47 @@
+[package]
+name = "entity-rollups"
+
+license = "FSL-1.1-ALv2"
+edition = "2024"
+
+[workspace]
+
+[features]
+fail-on-warnings = []
+json-schema = [
+  "core-access/json-schema",
+  "governance/json-schema", 
+  "core-custody/json-schema",
+  "core-customer/json-schema",
+  "document-storage/json-schema",
+  "core-deposit/json-schema",
+  "core-credit/json-schema",
+  "core-accounting/json-schema"
+]
+
+[[bin]]
+name = "entity-rollups"
+path = "src/main.rs"
+
+[dependencies]
+core-access = { path = "../../core/access" }
+governance = { path = "../../core/governance" }
+core-custody = { path = "../../core/custody" }
+core-customer = { path = "../../core/customer" }
+core-deposit = { path = "../../core/deposit" }
+core-credit = { path = "../../core/credit" }
+core-accounting = { path = "../../core/accounting" }
+document-storage = { path = "../../core/document-storage" }
+
+clap = { version = "4.5.47", features = ["derive", "env"] }
+schemars = { version = "1.0.4", features = ["derive", "chrono04", "rust_decimal1"] }
+serde_json = "1.0.143"
+anyhow = "1.0.99"
+colored = "3.0"
+similar = { version = "2.6", features = ["inline"] }
+handlebars = "6.3.2"
+chrono = { version = "0.4.42", features = ["clock", "serde"], default-features = false }
+serde = { version = "1.0.214", features = ["derive"] }
+
+[dev-dependencies]
+tempfile = "3.22.0"
