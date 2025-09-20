@@ -285,6 +285,7 @@
 
       nativeBuildInputs = with pkgs;
         [
+          iptables
           wait4x
           rustToolchain
           opentofu
