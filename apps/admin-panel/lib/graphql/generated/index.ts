@@ -303,6 +303,16 @@ export type ChartOfAccountsCsvImportPayload = {
   chartOfAccounts: ChartOfAccounts;
 };
 
+export type Collateral = {
+  __typename?: 'Collateral';
+  account: LedgerAccount;
+  accountId: Scalars['UUID']['output'];
+  collateralId: Scalars['UUID']['output'];
+  creditFacility: CreditFacility;
+  id: Scalars['ID']['output'];
+  walletId?: Maybe<Scalars['UUID']['output']>;
+};
+
 export enum CollateralAction {
   Add = 'ADD',
   Remove = 'REMOVE'
@@ -1368,7 +1378,7 @@ export type LedgerAccountEdge = {
   node: LedgerAccount;
 };
 
-export type LedgerAccountEntity = CreditFacility | DepositAccount;
+export type LedgerAccountEntity = Collateral | CreditFacility | DepositAccount;
 
 export type LedgerTransaction = {
   __typename?: 'LedgerTransaction';
@@ -1400,7 +1410,7 @@ export type LedgerTransactionEdge = {
   node: LedgerTransaction;
 };
 
-export type LedgerTransactionEntity = Deposit | Withdrawal;
+export type LedgerTransactionEntity = CreditFacilityDisbursal | Deposit | Withdrawal;
 
 export type Loan = {
   __typename?: 'Loan';
@@ -3281,6 +3291,7 @@ export type AccountingCsvDownloadLinkGenerateMutationVariables = Exact<{
 export type AccountingCsvDownloadLinkGenerateMutation = { __typename?: 'Mutation', accountingCsvDownloadLinkGenerate: { __typename?: 'AccountingCsvDownloadLinkGeneratePayload', link: { __typename?: 'AccountingCsvDownloadLink', url: string, csvId: string } } };
 
 export type LedgerAccountDetailsFragment = { __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null, entity?:
+    | { __typename: 'Collateral', creditFacility: { __typename?: 'CreditFacility', publicId: any } }
     | { __typename: 'CreditFacility', publicId: any }
     | { __typename: 'DepositAccount', depositAccountId: string, customer: { __typename?: 'Customer', publicId: any } }
    | null, ancestors: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, children: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, balanceRange:
@@ -3299,6 +3310,7 @@ export type LedgerAccountByCodeQueryVariables = Exact<{
 
 
 export type LedgerAccountByCodeQuery = { __typename?: 'Query', ledgerAccountByCode?: { __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null, entity?:
+      | { __typename: 'Collateral', creditFacility: { __typename?: 'CreditFacility', publicId: any } }
       | { __typename: 'CreditFacility', publicId: any }
       | { __typename: 'DepositAccount', depositAccountId: string, customer: { __typename?: 'Customer', publicId: any } }
      | null, ancestors: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, children: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, balanceRange:
@@ -3317,6 +3329,7 @@ export type LedgerAccountQueryVariables = Exact<{
 
 
 export type LedgerAccountQuery = { __typename?: 'Query', ledgerAccount?: { __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null, entity?:
+      | { __typename: 'Collateral', creditFacility: { __typename?: 'CreditFacility', publicId: any } }
       | { __typename: 'CreditFacility', publicId: any }
       | { __typename: 'DepositAccount', depositAccountId: string, customer: { __typename?: 'Customer', publicId: any } }
      | null, ancestors: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, children: Array<{ __typename?: 'LedgerAccount', id: string, ledgerAccountId: string, name: string, code?: any | null }>, balanceRange:
@@ -3347,6 +3360,7 @@ export type LedgerTransactionQueryVariables = Exact<{
 
 
 export type LedgerTransactionQuery = { __typename?: 'Query', ledgerTransaction?: { __typename?: 'LedgerTransaction', id: string, ledgerTransactionId: string, createdAt: any, description?: string | null, effective: any, entity?:
+      | { __typename: 'CreditFacilityDisbursal', publicId: any }
       | { __typename: 'Deposit', publicId: any }
       | { __typename: 'Withdrawal', publicId: any }
      | null, entries: Array<{ __typename?: 'JournalEntry', id: string, entryId: string, entryType: string, direction: DebitOrCredit, layer: Layer, amount:
@@ -4240,6 +4254,11 @@ export const LedgerAccountDetailsFragmentDoc = gql`
     }
     ... on CreditFacility {
       publicId
+    }
+    ... on Collateral {
+      creditFacility {
+        publicId
+      }
     }
   }
   ancestors {
@@ -7088,6 +7107,9 @@ export const LedgerTransactionDocument = gql`
         publicId
       }
       ... on Withdrawal {
+        publicId
+      }
+      ... on CreditFacilityDisbursal {
         publicId
       }
     }
