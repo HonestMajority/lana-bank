@@ -1,0 +1,69 @@
+name: SQLFluff
+
+on:
+  pull_request:
+    paths:
+      - "meltano/transform/models/**/*.sql"
+
+env:
+  ENGINE_DEFAULT: podman
+  TARGET_BIGQUERY_LOCATION: "US"
+
+permissions:
+  contents: read
+
+jobs:
+  sqlfluff:
+    name: Lint SQL with SQLFluff
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/setup-podman
+      - uses: ./.github/actions/setup-nix
+        with:
+          cachix_auth_token: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          google_credentials: ${{ secrets.GOOGLE_CREDENTIALS }}
+
+      - name: Configure Meltano environment variables (credentials only)
+        run: |
+          mkdir -p meltano
+          echo "${GOOGLE_SA_BASE64}" | base64 -d > meltano/keyfile.json
+          test -s meltano/keyfile.json
+
+          PROJECT_ID="$(jq -r '.project_id' meltano/keyfile.json)"
+
+          export DBT_BIGQUERY_KEYFILE="$(pwd)/meltano/keyfile.json"
+          export DBT_BIGQUERY_PROJECT="${PROJECT_ID}"
+          export GOOGLE_APPLICATION_CREDENTIALS="$(pwd)/meltano/keyfile.json"
+
+          SAFE_PREFIX="sqlfluff_${GITHUB_RUN_ID}_${GITHUB_RUN_ATTEMPT}"
+          SAFE_PREFIX="$(printf '%s' "$SAFE_PREFIX" | tr -c '[:alnum:]_' '_' )"
+          export TARGET_BIGQUERY_DATASET="${SAFE_PREFIX}_dataset"
+          export DBT_BIGQUERY_DATASET="dbt_${SAFE_PREFIX}"
+          export DOCS_BUCKET_NAME="${SAFE_PREFIX}-lana-documents"
+
+          echo "DBT_BIGQUERY_KEYFILE=$DBT_BIGQUERY_KEYFILE" >> $GITHUB_ENV
+          echo "DBT_BIGQUERY_PROJECT=$DBT_BIGQUERY_PROJECT" >> $GITHUB_ENV
+          echo "TARGET_BIGQUERY_DATASET=$TARGET_BIGQUERY_DATASET" >> $GITHUB_ENV
+          echo "DBT_BIGQUERY_DATASET=$DBT_BIGQUERY_DATASET" >> $GITHUB_ENV
+          echo "DOCS_BUCKET_NAME=$DOCS_BUCKET_NAME" >> $GITHUB_ENV
+          echo "GOOGLE_APPLICATION_CREDENTIALS=$GOOGLE_APPLICATION_CREDENTIALS" >> $GITHUB_ENV
+
+          {
+            echo "TARGET_BIGQUERY_CREDENTIALS_JSON<<EOF"
+            cat meltano/keyfile.json
+            echo "EOF"
+          } >> "$GITHUB_ENV"
+        env:
+          GOOGLE_SA_BASE64: ${{ secrets.GOOGLE_SA_BASE64 }}
+
+      - name: Install Meltano utilities
+        run: nix develop -c meltano install utility sqlfluff
+      - name: Run sqlfluff
+        # Run through bash to cd into meltano because sqlfluff does not respect $MELTANO_PROJECT_ROOT
+        run: |
+          nix develop -c bash -lc '
+            cd meltano
+            .meltano/utilities/sqlfluff/venv/bin/pip install --quiet --upgrade platformdirs
+            meltano invoke sqlfluff:lint
+          '
