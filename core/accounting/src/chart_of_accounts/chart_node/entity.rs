@@ -5,9 +5,8 @@ use serde::{Deserialize, Serialize};
 
 use es_entity::*;
 
-use crate::primitives::*;
+use crate::{chart_of_accounts::error::ChartOfAccountsError, primitives::*};
 
-use crate::chart_of_accounts::error::ChartOfAccountsError;
 use cala_ledger::{account::NewAccount, account_set::NewAccountSet};
 
 #[derive(EsEvent, Debug, Clone, Serialize, Deserialize)]
@@ -45,11 +44,19 @@ pub struct ChartNode {
 }
 
 impl ChartNode {
-    pub fn assign_manual_transaction_account(&mut self) -> Idempotent<NewAccount> {
+    pub fn assign_manual_transaction_account(
+        &mut self,
+    ) -> Result<Idempotent<NewAccount>, ChartOfAccountsError> {
         idempotency_guard!(
             self.events.iter_all().rev(),
             ChartNodeEvent::ManualTransactionAccountAssigned { .. }
         );
+        if !self.can_have_manual_transactions() {
+            return Err(ChartOfAccountsError::NonLeafAccount(
+                self.spec.code.to_string(),
+            ));
+        }
+
         let ledger_account_id = LedgerAccountId::new();
         self.events
             .push(ChartNodeEvent::ManualTransactionAccountAssigned { ledger_account_id });
@@ -63,7 +70,7 @@ impl ChartNode {
             .build()
             .expect("Could not build new account");
 
-        Idempotent::Executed(new_account)
+        Ok(Idempotent::Executed(new_account))
     }
 
     pub fn add_child_node(&mut self, child_node_id: ChartNodeId) -> Idempotent<()> {
@@ -82,13 +89,8 @@ impl ChartNode {
         self.children.iter()
     }
 
-    pub fn check_can_have_manual_transactions(&self) -> Result<(), ChartOfAccountsError> {
-        match self.children.is_empty() {
-            true => Ok(()),
-            false => Err(ChartOfAccountsError::NonLeafAccount(
-                self.spec.code.to_string(),
-            )),
-        }
+    pub fn can_have_manual_transactions(&self) -> bool {
+        self.children.is_empty()
     }
 
     pub fn is_trial_balance_account(&self) -> bool {
@@ -210,7 +212,7 @@ mod tests {
         assert!(node.manual_transaction_account_id.is_some());
 
         let result = node.assign_manual_transaction_account();
-        matches!(result, Idempotent::Ignored);
+        matches!(result, Ok(Idempotent::Ignored));
     }
 
     #[test]
