@@ -4,15 +4,28 @@ import { gql } from "@apollo/client"
 import { useEffect, use } from "react"
 import { useTranslations } from "next-intl"
 
+import LedgerTransactions from "../../../components/ledger-transactions"
+
 import WithdrawalDetailsCard from "./details"
 
 import { useGetWithdrawalDetailsQuery } from "@/lib/graphql/generated"
+
 import { DetailsPageSkeleton } from "@/components/details-page-skeleton"
+
 import { useCreateContext } from "@/app/create"
 import { useBreadcrumb } from "@/app/breadcrumb-provider"
+
 import { PublicIdBadge } from "@/components/public-id-badge"
 
 gql`
+  fragment LedgerTransactionFields on LedgerTransaction {
+    id
+    ledgerTransactionId
+    createdAt
+    effective
+    description
+  }
+
   fragment WithdrawDetailsPageFragment on Withdrawal {
     id
     withdrawalId
@@ -21,6 +34,9 @@ gql`
     status
     reference
     createdAt
+    ledgerTransactions {
+      ...LedgerTransactionFields
+    }
     account {
       customer {
         id
@@ -92,8 +108,11 @@ function WithdrawalPage({
   if (!data?.withdrawalByPublicId) return <div>Not found</div>
 
   return (
-    <main className="max-w-7xl m-auto">
+    <main className="max-w-7xl m-auto space-y-2">
       <WithdrawalDetailsCard withdrawal={data.withdrawalByPublicId} />
+      <LedgerTransactions
+        ledgerTransactions={data.withdrawalByPublicId.ledgerTransactions}
+      />
     </main>
   )
 }

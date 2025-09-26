@@ -22,6 +22,12 @@ checksums:
     Common/submit: 7c91ef5f747eea9f77a9c4f23e19fb2e
     Common/set: 72fc8d871f1d34fd81f0cae5c4505591
     Common/copiedToClipboard: 6a3c394a9a51646bad2f72d7311b242d
+    LedgerTransactions/title: 8c7ca0bf96c38f836a346e583121eb3d
+    LedgerTransactions/noTransactions: d41ef867a29b24d88a2cf78a2eb48885
+    LedgerTransactions/table/headers/transactionId: 74529016d49a203243eff308e1d312d3
+    LedgerTransactions/table/headers/description: e17686a22ffad04cc7bb70524ed4478b
+    LedgerTransactions/table/headers/effectiveDate: aab6741517742a24eb46f529ebb94bf6
+    LedgerTransactions/table/headers/createdAt: 9ce495d7fc74e1a2ae86c07206a3e531
     PermissionsDisplay/permissionsLabel: bb2e860b9063f62f4bc1a2ea9c744c7f
     PermissionsDisplay/noRoleSelected: bb1bba152afe692413e833b64f2cb9d9
     PermissionsDisplay/noPermissions: 53beaa15a0f44fff1d0fb8285071dce0

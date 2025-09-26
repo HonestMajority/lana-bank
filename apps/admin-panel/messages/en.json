@@ -22,6 +22,18 @@
     "set": "Set",
     "copiedToClipboard": "Copied to clipboard"
   },
+  "LedgerTransactions": {
+    "title": "Ledger Transactions",
+    "noTransactions": "No ledger transactions available",
+    "table": {
+      "headers": {
+        "transactionId": "Transaction ID",
+        "description": "Description",
+        "effectiveDate": "Effective Date",
+        "createdAt": "Created At"
+      }
+    }
+  },
   "PermissionsDisplay": {
     "permissionsLabel": "Permissions this role has",
     "noRoleSelected": "No role selected",

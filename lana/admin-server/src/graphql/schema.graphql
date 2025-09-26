@@ -487,6 +487,7 @@ type CreditFacilityDisbursal {
 	creditFacility: CreditFacility!
 	status: DisbursalStatus!
 	approvalProcess: ApprovalProcess!
+	ledgerTransactions: [LedgerTransaction!]!
 }
 
 type CreditFacilityDisbursalConnection {
@@ -1064,6 +1065,7 @@ type Deposit {
 	reference: String!
 	status: DepositStatus!
 	account: DepositAccount!
+	ledgerTransactions: [LedgerTransaction!]!
 }
 
 type DepositAccount {
@@ -2202,6 +2204,7 @@ type Withdrawal {
 	status: WithdrawalStatus!
 	approvalProcess: ApprovalProcess!
 	account: DepositAccount!
+	ledgerTransactions: [LedgerTransaction!]!
 }
 
 input WithdrawalCancelInput {

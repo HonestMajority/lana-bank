@@ -2,7 +2,7 @@ use async_graphql::*;
 
 use super::CreditFacility;
 use crate::{
-    graphql::{approval_process::*, loader::LanaDataLoader},
+    graphql::{accounting::LedgerTransaction, approval_process::*, loader::LanaDataLoader},
     primitives::*,
 };
 pub use lana_app::{
@@ -66,6 +66,22 @@ impl CreditFacilityDisbursal {
             .await?
             .expect("process not found");
         Ok(process)
+    }
+
+    async fn ledger_transactions(
+        &self,
+        ctx: &Context<'_>,
+    ) -> async_graphql::Result<Vec<LedgerTransaction>> {
+        let loader = ctx.data_unchecked::<LanaDataLoader>();
+        let tx_ids = self.entity.ledger_tx_ids();
+        let mut loaded_transactions = loader.load_many(tx_ids.iter().copied()).await?;
+
+        let transactions = tx_ids
+            .iter()
+            .filter_map(|id| loaded_transactions.remove(id))
+            .collect();
+
+        Ok(transactions)
     }
 }
 
