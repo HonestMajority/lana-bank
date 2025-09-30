@@ -12,12 +12,12 @@ use public_id::PublicIds;
 use crate::{
     Jobs,
     credit_facility::{ActivationData, ActivationOutcome, CreditFacilities},
-    disbursal::{Disbursals, NewDisbursal},
+    disbursal::Disbursals,
     error::CoreCreditError,
     event::CoreCreditEvent,
     jobs::interest_accruals,
     ledger::CreditLedger,
-    primitives::{CoreCreditAction, CoreCreditObject, CreditFacilityId, DisbursalId},
+    primitives::{CoreCreditAction, CoreCreditObject, CreditFacilityId},
 };
 
 pub use job::*;
@@ -99,8 +99,6 @@ where
         let ActivationData {
             credit_facility,
             next_accrual_period,
-            approval_process_id,
-            structuring_fee,
         } = match self.credit_facilities.activate_in_op(&mut op, id).await? {
             ActivationOutcome::Activated(data) => data,
             ActivationOutcome::Ignored => {
@@ -108,43 +106,9 @@ where
             }
         };
 
-        let due_date = credit_facility.maturity_date;
-        let overdue_date = credit_facility
-            .terms
-            .obligation_overdue_duration_from_due
-            .map(|d| d.end_date(due_date));
-        let liquidation_date = credit_facility
-            .terms
-            .obligation_liquidation_duration_from_due
-            .map(|d| d.end_date(due_date));
-
-        if !structuring_fee.is_zero() {
-            let disbursal_id = DisbursalId::new();
-            let public_id = self
-                .public_ids
-                .create_in_op(
-                    &mut op,
-                    crate::primitives::DISBURSAL_REF_TARGET,
-                    disbursal_id,
-                )
-                .await?;
-
-            let new_disbursal = NewDisbursal::builder()
-                .id(disbursal_id)
-                .credit_facility_id(credit_facility.id)
-                .approval_process_id(approval_process_id)
-                .amount(structuring_fee)
-                .account_ids(credit_facility.account_ids)
-                .disbursal_credit_account_id(credit_facility.disbursal_credit_account_id)
-                .due_date(due_date)
-                .overdue_date(overdue_date)
-                .liquidation_date(liquidation_date)
-                .public_id(public_id.id)
-                .build()
-                .expect("could not build new disbursal");
-
+        if !credit_facility.structuring_fee().is_zero() {
             self.disbursals
-                .create_first_disbursal_in_op(&mut op, new_disbursal)
+                .create_first_disbursal_in_op(&mut op, &credit_facility)
                 .await?;
         }
 
