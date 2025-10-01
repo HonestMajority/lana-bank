@@ -6,7 +6,7 @@ pub struct KeycloakConnectionConfig {
     pub url: String,
     pub client_id: String,
     pub realm: String,
-    #[serde(default)]
+    #[serde(skip)]
     pub client_secret: String,
 }
 
