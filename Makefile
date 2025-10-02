@@ -112,7 +112,7 @@ sdl-rust-cargo:
 
 # Generate default configuration file
 generate-default-config:
-	SQLX_OFFLINE=true cargo run -p lana-cli -- dump-default-config > dev/lana.default.yml
+	SQLX_OFFLINE=true cargo run -p lana-cli --all-features -- dump-default-config > dev/lana.default.yml
 
 sdl-js:
 	cd apps/admin-panel && pnpm install && pnpm codegen
