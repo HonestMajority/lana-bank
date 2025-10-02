@@ -1,17 +1,16 @@
 #![cfg_attr(feature = "fail-on-warnings", deny(warnings))]
 #![cfg_attr(feature = "fail-on-warnings", deny(clippy::all))]
 
-pub mod config;
 pub mod error;
 mod job;
 
-use config::*;
 use error::*;
 use job::*;
 
 use ::job::Jobs;
 use audit::AuditSvc;
 use authz::PermissionCheck;
+use core_customer::{CoreCustomerAction, CoreCustomerEvent, CustomerObject, Customers};
 use core_deposit::{
     CoreDeposit, CoreDepositAction, CoreDepositEvent, CoreDepositObject, GovernanceAction,
     GovernanceObject,
@@ -26,6 +25,7 @@ pub struct DepositSync<Perms, E>
 where
     Perms: PermissionCheck,
     E: OutboxEventMarker<CoreDepositEvent>
+        + OutboxEventMarker<CoreCustomerEvent>
         + OutboxEventMarker<GovernanceEvent>
         + OutboxEventMarker<LanaEvent>
         + std::fmt::Debug,
@@ -38,6 +38,7 @@ impl<Perms, E> Clone for DepositSync<Perms, E>
 where
     Perms: PermissionCheck,
     E: OutboxEventMarker<CoreDepositEvent>
+        + OutboxEventMarker<CoreCustomerEvent>
         + OutboxEventMarker<GovernanceEvent>
         + OutboxEventMarker<LanaEvent>
         + std::fmt::Debug,
@@ -54,10 +55,11 @@ impl<Perms, E> DepositSync<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreDepositAction> + From<GovernanceAction>,
+        From<CoreDepositAction> + From<CoreCustomerAction> + From<GovernanceAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreDepositObject> + From<GovernanceObject>,
+        From<CoreDepositObject> + From<CustomerObject> + From<GovernanceObject>,
     E: OutboxEventMarker<CoreDepositEvent>
+        + OutboxEventMarker<CoreCustomerEvent>
         + OutboxEventMarker<GovernanceEvent>
         + OutboxEventMarker<LanaEvent>
         + std::fmt::Debug,
@@ -66,16 +68,14 @@ where
         jobs: &Jobs,
         outbox: &Outbox<E>,
         deposits: &CoreDeposit<Perms, E>,
+        customers: &Customers<Perms, E>,
         sumsub_client: SumsubClient,
-        config: DepositSyncConfig,
     ) -> Result<Self, DepositSyncError> {
-        if config.sumsub_export_enabled {
-            jobs.add_initializer_and_spawn_unique(
-                SumsubExportInit::new(outbox, sumsub_client, deposits),
-                SumsubExportJobConfig::<Perms, E>::new(),
-            )
-            .await?;
-        }
+        jobs.add_initializer_and_spawn_unique(
+            SumsubExportInit::new(outbox, sumsub_client, deposits, customers),
+            SumsubExportJobConfig::<Perms, E>::new(),
+        )
+        .await?;
 
         Ok(Self {
             _phantom: std::marker::PhantomData,

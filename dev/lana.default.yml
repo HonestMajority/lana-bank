@@ -34,8 +34,6 @@ app:
       realm: customer
     activity_update_utc_time: 00:00
     activity_update_enabled: true
-  deposit_sync:
-    sumsub_export_enabled: true
   accounting_init:
     chart_of_accounts_seed_path: null
     chart_of_accounts_opening_date: null

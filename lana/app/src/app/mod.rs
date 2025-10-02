@@ -139,8 +139,8 @@ impl LanaApp {
             &jobs,
             &outbox,
             &deposits,
+            &customers,
             crate::applicant::SumsubClient::new(&config.sumsub),
-            config.deposit_sync,
         )
         .await?;
 
