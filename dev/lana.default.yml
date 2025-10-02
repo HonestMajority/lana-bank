@@ -26,7 +26,6 @@ app:
       client_id: internal-service-account
       realm: internal
   customer_sync:
-    auto_create_deposit_account: true
     customer_status_sync_active: true
     create_deposit_account_on_customer_create: false
     keycloak:
