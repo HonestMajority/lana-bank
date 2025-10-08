@@ -106,12 +106,6 @@ where
             }
         };
 
-        if !credit_facility.structuring_fee().is_zero() {
-            self.disbursals
-                .create_first_disbursal_in_op(&mut op, &credit_facility)
-                .await?;
-        }
-
         let accrual_id = credit_facility
             .interest_accrual_cycle_in_progress()
             .expect("First accrual not found")
@@ -128,6 +122,23 @@ where
                 next_accrual_period.end,
             )
             .await?;
+
+        if !credit_facility.structuring_fee().is_zero() {
+            let disbursal_id = self
+                .disbursals
+                .create_first_disbursal_in_op(&mut op, &credit_facility)
+                .await?;
+
+            self.ledger
+                .handle_activation_with_structuring_fee(
+                    op,
+                    credit_facility.activation_data(),
+                    disbursal_id,
+                )
+                .await?;
+
+            return Ok(());
+        }
 
         self.ledger
             .handle_facility_activation(op, credit_facility.activation_data())
