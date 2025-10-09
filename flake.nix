@@ -351,6 +351,8 @@
                 # Wait for PostgreSQL to be ready
                 echo "Waiting for PostgreSQL to be ready..."
                 wait4x postgresql "${devEnvVars.PG_CON}" --timeout 120s
+                echo "Waiting for Keycloak..."
+                ${pkgs.wait4x}/bin/wait4x http http://localhost:8081 --timeout 120s
 
                 # Set TERM for CI environments
                 export TERM="''${TERM:-dumb}"
@@ -479,7 +481,6 @@
 
               echo "Running database migrations..."
               ${pkgs.sqlx-cli}/bin/sqlx migrate run --source lana/app/migrations
-
               echo "Waiting for Keycloak..."
               ${pkgs.wait4x}/bin/wait4x http http://localhost:8081 --timeout 120s
 
