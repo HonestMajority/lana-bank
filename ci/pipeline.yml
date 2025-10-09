@@ -309,7 +309,6 @@ jobs:
         inputs:
         - name: pipeline-tasks
         - name: repo
-        outputs: [{name: bin}]
         params:
           CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
           CACHIX_CACHE_NAME: lana-bank-ci
@@ -329,38 +328,6 @@ jobs:
             # Copy the binary to output
             mkdir -p ../bin
             cp result/bin/lana-cli ../bin/
-            
-            # Create Dockerfile for scratch container
-            cat > ../bin/Dockerfile <<'EOF'
-            FROM scratch
-            COPY lana-cli /lana-cli
-            ENTRYPOINT ["/lana-cli"]
-            EOF
-    - task: build-image-with-kaniko
-      privileged: true
-      config:
-        platform: linux
-        image_resource:
-          type: registry-image
-          source:
-            repository: gcr.io/kaniko-project/executor
-            tag: debug
-        inputs:  [{name: bin}]
-        outputs: [{name: image}]
-        run:
-          path: /kaniko/executor
-          args:
-            - --dockerfile=Dockerfile
-            - --context=bin
-            - --use-new-run
-            - --single-snapshot
-            - --cache=false
-            - --no-push
-            - --tar-path=image/image.tar
-    - put: static-binary-image
-      params:
-        image: image/image.tar
-        additional_tags: repo/.git/ref  
 
   - name: release
     serial: true
@@ -384,54 +351,68 @@ jobs:
           - get: meltano-edge-image
             passed:
               - build-meltano-edge-image
-      - task: prep-release
-        config:
-          platform: linux
-          image_resource: #@ release_task_image_config()
-          inputs:
+      - in_parallel:
+        - do:
+          - task: prep-release
+            config:
+              platform: linux
+              image_resource: #@ release_task_image_config()
+              inputs:
+                - name: pipeline-tasks
+                - name: repo
+                - name: version
+              outputs:
+                - name: version
+                - name: artifacts
+              run:
+                path: pipeline-tasks/ci/vendor/tasks/prep-release-src.sh
+          - task: prep-release-apps
+            config:
+              platform: linux
+              image_resource: #@ release_task_image_config()
+              inputs:
+                - name: pipeline-tasks
+                - name: version
+                - name: #@ app_src_resource_name("admin-panel")
+                  path: admin-panel-src
+                - name: #@ app_src_resource_name("customer-portal")
+                  path: customer-portal-src
+              outputs:
+                - name: #@ app_src_resource_name("admin-panel")
+                  path: admin-panel-src
+                - name: #@ app_src_resource_name("customer-portal")
+                  path: customer-portal-src
+              run:
+                path: pipeline-tasks/ci/tasks/prep-release-apps.sh
+        - task: nix-build-static
+          attempts: 2
+          config:
+            platform: linux
+            image_resource: #@ nix_flake_cachix_image_config()
+            inputs:
             - name: pipeline-tasks
             - name: repo
-            - name: version
-          outputs:
-            - name: version
-            - name: artifacts
-          run:
-            path: pipeline-tasks/ci/vendor/tasks/prep-release-src.sh
-      - task: prep-release-apps
-        config:
-          platform: linux
-          image_resource: #@ release_task_image_config()
-          inputs:
-            - name: pipeline-tasks
-            - name: version
-            - name: #@ app_src_resource_name("admin-panel")
-              path: admin-panel-src
-            - name: #@ app_src_resource_name("customer-portal")
-              path: customer-portal-src
-          outputs:
-            - name: #@ app_src_resource_name("admin-panel")
-              path: admin-panel-src
-            - name: #@ app_src_resource_name("customer-portal")
-              path: customer-portal-src
-          run:
-            path: pipeline-tasks/ci/tasks/prep-release-apps.sh
-      - get: static-binary-image
-        passed: [build-static-binary]
-      - task: unwrap-binary
-        config:
-          platform: linux
-          image_resource:
-            type: registry-image
-            source: {repository: alpine, tag: "3.20"}
-          inputs: [{name: static-binary-image}]
-          outputs: [{name: binaries}]
-          caches: [{path: apk-cache}]
-          run:
-            path: sh
-            args:
-            - -exc
-            - |
-              mv static-binary-image/rootfs/* binaries
+            outputs:
+            - name: binaries
+            params:
+              CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
+              CACHIX_CACHE_NAME: lana-bank-ci
+            run:
+              path: sh
+              args:
+              - -exc
+              - |
+                set -euo pipefail
+                cd repo
+                
+                # Setup Cachix cache
+                cachix use $CACHIX_CACHE_NAME
+                
+                nix build .#lana-cli-static
+
+                # Copy the binary to output
+                mkdir -p ../bin
+                cp result/bin/lana-cli ../binaries/
       - in_parallel:
         - do:
           - task: build-admin-panel-release
@@ -702,14 +683,6 @@ resources:
       username: #@ data.values.gar_registry_user
       password: #@ data.values.gar_registry_password
       repository: #@ public_gar_registry() + "/meltano"
-
-  - name: static-binary-image
-    type: registry-image
-    source:
-      tag: latest
-      repository: #@ private_gar_registry() + "/" + data.values.folder_registry_image_static
-      username: #@ data.values.gar_registry_user
-      password: #@ data.values.gar_registry_password
 
   -  #@ pipeline_tasks_resource()
   -  #@ edge_image_resource(publicRepo=False)
