@@ -32,6 +32,7 @@ groups:
   - name: lana-bank
     jobs:
       - test-bats
+      - test-integration
       - release
       - flake-check
       - build-edge-image
@@ -190,6 +191,33 @@ jobs:
 
   -  #@ build_edge_image()
 
+  - name: test-integration
+    serial: true
+    plan:
+      - in_parallel:
+          - get: repo
+            trigger: true
+          - { get: pipeline-tasks }
+      - task: run-nextest
+        privileged: true
+        config:
+          platform: linux
+          image_resource: #@ nix_flake_cachix_image_config()
+          inputs:
+          - name: repo
+          params:
+            CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
+            CACHIX_CACHE_NAME: lana-bank-ci
+          run:
+            path: sh
+            args:
+              - -exc
+              - |
+                set -euo pipefail
+                cd repo
+                cachix use $CACHIX_CACHE_NAME
+                nix run .#nextest
+
   - name: test-bats
     serial: true
     plan:
@@ -319,6 +347,7 @@ jobs:
             passed: 
               - flake-check
               - test-bats
+              - test-integration
               - build-static-binary
             trigger: true
           - get: pipeline-tasks

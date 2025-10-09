@@ -449,7 +449,11 @@
                 pkgs.sqlx-cli
                 pkgs.cargo-nextest
                 pkgs.coreutils
+                pkgs.fontconfig
               ]}:$PATH"
+
+              export FONTCONFIG_FILE=${pkgs.fontconfig.out}/etc/fonts/fonts.conf
+              export FONTCONFIG_PATH=${pkgs.fontconfig.out}/etc/fonts
 
               # Set environment variables needed by tests
               export DATABASE_URL="${devEnvVars.DATABASE_URL}"
