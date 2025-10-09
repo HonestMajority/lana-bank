@@ -200,12 +200,12 @@ jobs:
                     cd repo
                     cachix use $CACHIX_CACHE_NAME
                     cachix watch-exec ${CACHIX_CACHE_NAME} -- nix build .#nextest
-          on_failure:
-            put: lana-prs
-            params:
-              path: lana-prs
-              status: failure
-              context: populate-nix-cache
+      on_failure:
+        put: lana-prs
+        params:
+          path: lana-prs
+          status: failure
+          context: populate-nix-cache
     - put: lana-prs
       params:
         path: lana-prs
