@@ -351,7 +351,7 @@
                 wait4x postgresql "${devEnvVars.PG_CON}" --timeout 120s
 
                 echo "Running bats tests with LANA_BIN=$LANA_BIN..."
-                bats bats/*.bats
+                bats --no-pretty bats/*.bats
 
                 echo "Tests completed successfully!"
                 EOF

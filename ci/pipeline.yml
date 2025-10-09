@@ -31,9 +31,9 @@
 groups:
   - name: lana-bank
     jobs:
-      - bats-integrations-test
+      - test-bats
       - release
-      - check-code
+      - flake-check
       - build-edge-image
       - release-docker
       #! - set-dev-version
@@ -190,64 +190,48 @@ jobs:
 
   -  #@ build_edge_image()
 
-  - name: bats-integrations-test
+  - name: test-bats
     serial: true
     plan:
       - in_parallel:
           - get: repo
             trigger: true
           - { get: pipeline-tasks }
-      - task: bats-integrations-tests
-        timeout: 90m
+      - task: run-bats
         privileged: true
         config:
           platform: linux
           image_resource: #@ nix_flake_cachix_image_config()
           inputs:
-            - name: pipeline-tasks
-            - name: repo
+          - name: repo
           params:
             CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
             CACHIX_CACHE_NAME: lana-bank-ci
-            CI: true
-            ENGINE_DEFAULT: podman
-            TF_VAR_sa_creds: #@ data.values.gcp_creds
-            TF_VAR_name_prefix: gha
           run:
             path: sh
             args:
               - -exc
               - |
                 set -euo pipefail
-                pushd repo
-
+                cd repo
                 cachix use $CACHIX_CACHE_NAME
+                nix run .#bats
 
-                nix build . --print-out-paths | cachix push $CACHIX_CACHE_NAME
-
-                nix develop --profile dev-profile --command true
-                cachix push $CACHIX_CACHE_NAME dev-profile
-
-                nix -L develop --command make test-in-ci-cargo
-                nix -L develop --command make e2e
-
-  - name: check-code
+  - name: flake-check
     serial: true
     plan:
     - in_parallel:
       - { get: repo, trigger: true }
       - { get: pipeline-tasks }
-    - task: check-code
+    - task: nix-flake-check
       config:
         platform: linux
         image_resource: #@ nix_flake_cachix_image_config()
         inputs:
-        - name: pipeline-tasks
         - name: repo
         params:
           CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
           CACHIX_CACHE_NAME: lana-bank-ci
-          CI: true
         run:
           path: sh
           args:
@@ -257,10 +241,7 @@ jobs:
               cd repo
               cachix use $CACHIX_CACHE_NAME
               
-              nix develop --profile dev-profile --command true
-              cachix push $CACHIX_CACHE_NAME dev-profile
-
-              nix develop -c make check-code
+              nix flake check
 
   - name: build-static-binary
     serial: true
@@ -336,8 +317,8 @@ jobs:
       - in_parallel:
           - get: repo
             passed: 
-              - check-code
-              - bats-integrations-test
+              - flake-check
+              - test-bats
               - build-static-binary
             trigger: true
           - get: pipeline-tasks
