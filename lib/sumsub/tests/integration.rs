@@ -10,8 +10,8 @@ async fn test_create_real_applicant() {
 
     // Check if environment variables are set, skip test if not
     let config = match testing_utils::load_config_from_env() {
-        Ok(config) => config,
-        Err(_) => {
+        Some(config) => config,
+        None => {
             eprintln!("Skipping test: SUMSUB_KEY and SUMSUB_SECRET must be set");
             return;
         }
@@ -68,8 +68,8 @@ async fn test_create_permalink() {
 
     // Check if environment variables are set, skip test if not
     let config = match testing_utils::load_config_from_env() {
-        Ok(config) => config,
-        Err(_) => {
+        Some(config) => config,
+        None => {
             eprintln!("Skipping test: SUMSUB_KEY and SUMSUB_SECRET must be set");
             return;
         }
