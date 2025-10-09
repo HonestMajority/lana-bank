@@ -8,9 +8,14 @@ async fn test_create_real_applicant() {
     use sumsub::{SumsubClient, testing::*};
     use uuid::Uuid;
 
-    // Load configuration from environment
-    let config =
-        testing_utils::load_config_from_env().expect("SUMSUB_KEY and SUMSUB_SECRET must be set");
+    // Check if environment variables are set, skip test if not
+    let config = match testing_utils::load_config_from_env() {
+        Ok(config) => config,
+        Err(_) => {
+            eprintln!("Skipping test: SUMSUB_KEY and SUMSUB_SECRET must be set");
+            return;
+        }
+    };
 
     // Create client
     let client = SumsubClient::new(&config);
@@ -61,8 +66,15 @@ async fn test_create_permalink() {
     use sumsub::SumsubClient;
     use uuid::Uuid;
 
-    let config =
-        testing_utils::load_config_from_env().expect("SUMSUB_KEY and SUMSUB_SECRET must be set");
+    // Check if environment variables are set, skip test if not
+    let config = match testing_utils::load_config_from_env() {
+        Ok(config) => config,
+        Err(_) => {
+            eprintln!("Skipping test: SUMSUB_KEY and SUMSUB_SECRET must be set");
+            return;
+        }
+    };
+
     let client = SumsubClient::new(&config);
     let external_user_id = Uuid::new_v4().to_string();
 
