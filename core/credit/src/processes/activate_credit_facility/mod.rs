@@ -106,27 +106,32 @@ where
             }
         };
 
-        if credit_facility.disburse_all_at_activation() {
+        let structuring_fee = credit_facility.structuring_fee();
+        let activation_disbursal_id = if credit_facility.disburse_all_at_activation() {
             let activation_amount = credit_facility.activation_disbursal_amount();
 
-            if !activation_amount.is_zero() {
-                self.disbursals
-                    .create_activation_disbursal_in_op(&mut op, &credit_facility, activation_amount)
-                    .await?;
+            if activation_amount.is_zero() {
+                None
+            } else {
+                Some(
+                    self.disbursals
+                        .create_activation_disbursal_in_op(
+                            &mut op,
+                            &credit_facility,
+                            activation_amount,
+                        )
+                        .await?,
+                )
             }
+        } else if !structuring_fee.is_zero() {
+            Some(
+                self.disbursals
+                    .create_activation_disbursal_in_op(&mut op, &credit_facility, structuring_fee)
+                    .await?,
+            )
         } else {
-            let structuring_fee = credit_facility.structuring_fee();
-
-            if !structuring_fee.is_zero() {
-                self.disbursals
-                    .create_activation_disbursal_in_op(
-                        &mut op,
-                        &credit_facility,
-                        structuring_fee,
-                    )
-                    .await?;
-            }
-        }
+            None
+        };
 
         let accrual_id = credit_facility
             .interest_accrual_cycle_in_progress()
@@ -145,12 +150,7 @@ where
             )
             .await?;
 
-        if !credit_facility.structuring_fee().is_zero() {
-            let disbursal_id = self
-                .disbursals
-                .create_first_disbursal_in_op(&mut op, &credit_facility)
-                .await?;
-
+        if let Some(disbursal_id) = activation_disbursal_id {
             self.ledger
                 .handle_activation_with_structuring_fee(
                     op,
