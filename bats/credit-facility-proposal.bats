@@ -2,8 +2,8 @@
 
 load "helpers"
 
-PERSISTED_LOG_FILE="credit-facility.e2e-logs"
-RUN_LOG_FILE="credit-facility.run.e2e-logs"
+PERSISTED_LOG_FILE="credit-facility-proposal.e2e-logs"
+RUN_LOG_FILE="credit-facility-proposal.run.e2e-logs"
 
 setup_file() {
   start_server
