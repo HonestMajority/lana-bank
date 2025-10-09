@@ -296,6 +296,7 @@
               pkgs.gnused
               pkgs.gawk
               pkgs.poppler_utils
+              pkgs.libuuid
             ];
           in
             pkgs.symlinkJoin {
@@ -313,6 +314,7 @@
                 pkgs.gnused
                 pkgs.gawk
                 pkgs.poppler_utils
+                pkgs.libuuid
                 lana-cli-debug
               ];
               postBuild = ''
