@@ -106,6 +106,28 @@ where
             }
         };
 
+        if credit_facility.disburse_all_at_activation() {
+            let activation_amount = credit_facility.activation_disbursal_amount();
+
+            if !activation_amount.is_zero() {
+                self.disbursals
+                    .create_activation_disbursal_in_op(&mut op, &credit_facility, activation_amount)
+                    .await?;
+            }
+        } else {
+            let structuring_fee = credit_facility.structuring_fee();
+
+            if !structuring_fee.is_zero() {
+                self.disbursals
+                    .create_activation_disbursal_in_op(
+                        &mut op,
+                        &credit_facility,
+                        structuring_fee,
+                    )
+                    .await?;
+            }
+        }
+
         let accrual_id = credit_facility
             .interest_accrual_cycle_in_progress()
             .expect("First accrual not found")

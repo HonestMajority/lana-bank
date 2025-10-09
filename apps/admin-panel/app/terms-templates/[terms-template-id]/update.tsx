@@ -17,6 +17,7 @@ import {
 import { Input } from "@lana/web/ui/input"
 import { Button } from "@lana/web/ui/button"
 import { Label } from "@lana/web/ui/label"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import {
   useUpdateTermsTemplateMutation,
@@ -59,6 +60,7 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
     initialCvl: termsTemplate.values.initialCvl.toString(),
     oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+    disburseAllAtActivation: termsTemplate.values.disburseAllAtActivation,
   })
 
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +75,8 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
         marginCallCvl: getCvlValue(termsTemplate.values.marginCallCvl).toString(),
         initialCvl: getCvlValue(termsTemplate.values.initialCvl).toString(),
         oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+        disburseAllAtActivation:
+          termsTemplate.values.disburseAllAtActivation,
       })
     }
   }, [openUpdateTermsTemplateDialog, termsTemplate])
@@ -82,6 +86,13 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     setFormValues((prevValues) => ({
       ...prevValues,
       [name]: value,
+    }))
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseAllAtActivation: checked,
     }))
   }
 
@@ -117,6 +128,7 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
             marginCallCvl: formValues.marginCallCvl,
             initialCvl: formValues.initialCvl,
             oneTimeFeeRate: formValues.oneTimeFeeRate,
+            disburseAllAtActivation: formValues.disburseAllAtActivation,
           },
         },
       })
@@ -148,6 +160,7 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
       marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
       initialCvl: termsTemplate.values.initialCvl.toString(),
       oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+      disburseAllAtActivation: termsTemplate.values.disburseAllAtActivation,
     })
     setError(null)
   }
@@ -211,6 +224,17 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
                   value={formValues.oneTimeFeeRate}
                   onChange={handleChange}
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="disburseAllAtActivation"
+                  checked={formValues.disburseAllAtActivation}
+                  onCheckedChange={handleCheckboxChange}
+                  data-testid="terms-template-update-disburse-all-checkbox"
+                />
+                <Label htmlFor="disburseAllAtActivation">
+                  {t("fields.disburseAllAtActivation")}
+                </Label>
               </div>
             </div>
             <div className="space-y-4">

@@ -213,6 +213,24 @@ impl CreditFacility {
         self.terms.one_time_fee_rate.apply(self.amount)
     }
 
+    pub(crate) fn disburse_all_at_activation(&self) -> bool {
+        self.terms.disburse_all_at_activation()
+    }
+
+    pub(crate) fn activation_disbursal_amount(&self) -> UsdCents {
+        if self.disburse_all_at_activation() {
+            self.amount
+        } else {
+            let structuring_fee = self.structuring_fee();
+
+            if structuring_fee >= self.amount {
+                UsdCents::ZERO
+            } else {
+                self.amount - structuring_fee
+            }
+        }
+    }
+
     fn is_matured(&self) -> bool {
         self.events
             .iter_all()
@@ -649,6 +667,12 @@ mod test {
             .expect("should build a valid term")
     }
 
+    fn disburse_all_terms() -> TermValues {
+        let mut terms = default_terms();
+        terms.disburse_all_at_activation = true;
+        terms
+    }
+
     fn date_from(d: &str) -> DateTime<Utc> {
         d.parse::<DateTime<Utc>>().unwrap()
     }
@@ -693,7 +717,13 @@ mod test {
     }
 
     fn initial_events() -> Vec<CreditFacilityEvent> {
+        initial_events_with_terms(default_terms())
+    }
+
+    fn initial_events_with_terms(terms: TermValues) -> Vec<CreditFacilityEvent> {
         let id = CreditFacilityId::new();
+        let maturity_date = terms.maturity_date(activated_at());
+
         vec![CreditFacilityEvent::Initialized {
             id,
             credit_facility_proposal_id: id.into(),
@@ -702,12 +732,12 @@ mod test {
             customer_type: CustomerType::Individual,
             collateral_id: CollateralId::new(),
             amount: default_facility(),
-            terms: default_terms(),
+            terms,
             account_ids: account_ids(),
             disbursal_credit_account_id: CalaAccountId::new(),
             public_id: PublicId::new(format!("test-public-id-{}", uuid::Uuid::new_v4())),
             activated_at: activated_at(),
-            maturity_date: EffectiveDate::from(activated_at() + chrono::Duration::days(90)),
+            maturity_date,
         }]
     }
 
@@ -885,6 +915,28 @@ mod test {
         let credit_facility = facility_from(initial_events());
         let expected_fee = default_terms().one_time_fee_rate.apply(default_facility());
         assert_eq!(credit_facility.structuring_fee(), expected_fee);
+    }
+
+    #[test]
+    fn activation_disbursal_amount_excludes_structuring_fee_when_not_disbursing_all() {
+        let credit_facility = facility_from(initial_events());
+        let expected_amount = credit_facility.amount - credit_facility.structuring_fee();
+
+        assert_eq!(
+            credit_facility.activation_disbursal_amount(),
+            expected_amount
+        );
+    }
+
+    #[test]
+    fn activation_disbursal_amount_disburse_all_returns_full_amount() {
+        let credit_facility =
+            facility_from(initial_events_with_terms(disburse_all_terms()));
+
+        assert_eq!(
+            credit_facility.activation_disbursal_amount(),
+            credit_facility.amount
+        );
     }
 
     mod completion {

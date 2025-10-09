@@ -17,6 +17,7 @@ import {
 import { Input } from "@lana/web/ui/input"
 import { Button } from "@lana/web/ui/button"
 import { Label } from "@lana/web/ui/label"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import {
   useCreateTermsTemplateMutation,
@@ -77,6 +78,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
     initialCvl: "",
     durationUnits: "",
     oneTimeFeeRate: "",
+    disburseAllAtActivation: false,
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -90,6 +92,8 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
         initialCvl: getCvlValue(templateToDuplicate.values.initialCvl).toString(),
         durationUnits: templateToDuplicate.values.duration.units.toString(),
         oneTimeFeeRate: templateToDuplicate.values.oneTimeFeeRate.toString(),
+        disburseAllAtActivation:
+          templateToDuplicate.values.disburseAllAtActivation,
       })
     }
   }, [templateToDuplicate, openCreateTermsTemplateDialog])
@@ -99,6 +103,13 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
     setFormValues((prevValues) => ({
       ...prevValues,
       [name]: value,
+    }))
+  }
+
+  const handleCheckboxChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseAllAtActivation: checked,
     }))
   }
 
@@ -134,6 +145,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
             marginCallCvl: formValues.marginCallCvl,
             initialCvl: formValues.initialCvl,
             oneTimeFeeRate: formValues.oneTimeFeeRate,
+            disburseAllAtActivation: formValues.disburseAllAtActivation,
           },
         },
         onCompleted: (data) => {
@@ -163,6 +175,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
       initialCvl: "",
       durationUnits: "",
       oneTimeFeeRate: "",
+      disburseAllAtActivation: false,
     })
     setError(null)
   }
@@ -251,6 +264,18 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
                   disabled={isLoading}
                   data-testid="terms-template-one-time-fee-rate-input"
                 />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="disburseAllAtActivation"
+                  checked={formValues.disburseAllAtActivation}
+                  onCheckedChange={handleCheckboxChange}
+                  disabled={isLoading}
+                  data-testid="terms-template-disburse-all-checkbox"
+                />
+                <Label htmlFor="disburseAllAtActivation">
+                  {t("fields.disburseAllAtActivation")}
+                </Label>
               </div>
             </div>
             <div className="space-y-4">

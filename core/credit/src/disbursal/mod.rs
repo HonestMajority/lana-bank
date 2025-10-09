@@ -116,13 +116,14 @@ where
     }
 
     #[instrument(
-        name = "disbursals.create_first_disbursal_in_op",
+        name = "disbursals.create_activation_disbursal_in_op",
         skip(self, db, credit_facility)
     )]
-    pub(super) async fn create_first_disbursal_in_op(
+    pub(super) async fn create_activation_disbursal_in_op(
         &self,
         db: &mut es_entity::DbOpWithTime<'_>,
         credit_facility: &CreditFacility,
+        amount: UsdCents,
     ) -> Result<DisbursalId, DisbursalError> {
         let disbursal_id = DisbursalId::new();
         let public_id = self
@@ -144,7 +145,7 @@ where
             .id(disbursal_id)
             .credit_facility_id(credit_facility.id)
             .approval_process_id(credit_facility.id)
-            .amount(credit_facility.structuring_fee())
+            .amount(amount)
             .account_ids(credit_facility.account_ids)
             .disbursal_credit_account_id(credit_facility.disbursal_credit_account_id)
             .due_date(due_date)

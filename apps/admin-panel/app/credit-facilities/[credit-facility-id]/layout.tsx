@@ -104,6 +104,7 @@ gql`
         }
       }
       oneTimeFeeRate
+      disburseAllAtActivation
       duration {
         period
         units

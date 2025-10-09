@@ -15,6 +15,7 @@ The `TermValues` structure contains the following fields:
 - `accrual_cycle_interval` – cadence at which new interest obligations are generated.
 - `accrual_interval` – frequency used to calculate accrued interest within a cycle.
 - `one_time_fee_rate` – percentage fee taken at disbursal.
+- `disburse_all_at_activation` – when enabled the facility is fully drawn during activation and no further disbursals are allowed.
 - `liquidation_cvl` – collateral value limit that triggers liquidation.
 - `margin_call_cvl` – collateral value limit that triggers a margin call.
 - `initial_cvl` – collateral value limit required at facility creation.

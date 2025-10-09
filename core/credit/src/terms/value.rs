@@ -242,6 +242,8 @@ pub struct TermValues {
     pub accrual_interval: InterestInterval,
     #[builder(setter(into))]
     pub one_time_fee_rate: OneTimeFeeRatePct,
+    #[builder(default)]
+    pub disburse_all_at_activation: bool,
     #[builder(setter(into))]
     pub liquidation_cvl: CVLPct,
     #[builder(setter(into))]
@@ -261,10 +263,18 @@ impl TermValues {
         amount: UsdCents,
         price: PriceOfOneBTC,
     ) -> bool {
+        if self.disburse_all_at_activation && balance.any_disbursed() {
+            return false;
+        }
+
         let cvl = balance
             .with_added_disbursal(amount)
             .outstanding_amount_cvl(price);
         cvl >= self.margin_call_cvl
+    }
+
+    pub fn disburse_all_at_activation(&self) -> bool {
+        self.disburse_all_at_activation
     }
 
     pub fn is_proposal_completion_allowed(
@@ -885,5 +895,35 @@ mod test {
 
         let amount = UsdCents::try_from_usd(dec!(80_000)).unwrap();
         assert!(terms.is_disbursal_allowed(balance, amount, price));
+    }
+
+    #[test]
+    fn activation_only_disbursal_blocks_additional_draws() {
+        let terms = TermValues::builder()
+            .annual_rate(dec!(12))
+            .initial_cvl(dec!(140))
+            .margin_call_cvl(dec!(125))
+            .liquidation_cvl(dec!(105))
+            .duration(FacilityDuration::Months(3))
+            .interest_due_duration_from_accrual(ObligationDuration::Days(0))
+            .obligation_overdue_duration_from_due(ObligationDuration::Days(50))
+            .obligation_liquidation_duration_from_due(None)
+            .accrual_interval(InterestInterval::EndOfDay)
+            .accrual_cycle_interval(InterestInterval::EndOfMonth)
+            .one_time_fee_rate(dec!(0.01))
+            .disburse_all_at_activation(true)
+            .build()
+            .unwrap();
+
+        let price = PriceOfOneBTC::new(UsdCents::try_from_usd(dec!(100_000)).unwrap());
+        let principal = UsdCents::try_from_usd(dec!(100_000)).unwrap();
+        let mut balance = default_balances(principal);
+        balance.collateral = Satoshis::try_from_btc(dec!(1)).unwrap();
+
+        let amount = UsdCents::try_from_usd(dec!(20_000)).unwrap();
+        balance.disbursed = amount;
+        balance.facility_remaining = principal - amount;
+
+        assert!(!terms.is_disbursal_allowed(balance, amount, price));
     }
 }

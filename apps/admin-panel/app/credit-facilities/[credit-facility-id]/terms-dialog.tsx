@@ -64,6 +64,12 @@ export const CreditFacilityTermsDialog: React.FC<CreditFacilityTermsDialogProps>
       label: t("details.structuringFeeRate"),
       value: `${creditFacility.creditFacilityTerms.oneTimeFeeRate}%`,
     },
+    {
+      label: t("details.disburseAllAtActivation"),
+      value: creditFacility.creditFacilityTerms.disburseAllAtActivation
+        ? t("details.enabled")
+        : t("details.disabled"),
+    },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]
 

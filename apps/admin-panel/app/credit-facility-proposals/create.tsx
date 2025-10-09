@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@lana/web/ui/select"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import { useCreateContext } from "@/app/create"
 
@@ -70,7 +71,19 @@ type CreateCreditFacilityProposalDialogProps = {
   disbursalCreditAccountId: string
 }
 
-const initialFormValues = {
+type FormValues = {
+  facility: string
+  custodianId: string
+  annualRate: string
+  liquidationCvl: string
+  marginCallCvl: string
+  initialCvl: string
+  durationUnits: string
+  oneTimeFeeRate: string
+  disburseAllAtActivation: boolean
+}
+
+const initialFormValues: FormValues = {
   facility: "0",
   custodianId: DEFAULT_CUSTODIAN,
   annualRate: "",
@@ -79,6 +92,7 @@ const initialFormValues = {
   initialCvl: "",
   durationUnits: "",
   oneTimeFeeRate: "",
+  disburseAllAtActivation: false,
 }
 
 export const CreateCreditFacilityProposalDialog: React.FC<
@@ -120,7 +134,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
   const [useTemplateTerms, setUseTemplateTerms] = useState(true)
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("")
 
-  const [formValues, setFormValues] = useState(initialFormValues)
+  const [formValues, setFormValues] = useState<FormValues>(initialFormValues)
 
   useEffect(() => {
     if (
@@ -137,6 +151,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate.toString(),
+        disburseAllAtActivation: latestTemplate.values.disburseAllAtActivation,
       }))
     }
   }, [termsTemplatesData])
@@ -148,6 +163,14 @@ export const CreateCreditFacilityProposalDialog: React.FC<
       [name]: value,
     }))
     if (name === "facility") return
+    setSelectedTemplateId("")
+  }
+
+  const handleDisburseAllAtActivationChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseAllAtActivation: checked,
+    }))
     setSelectedTemplateId("")
   }
 
@@ -165,6 +188,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(selectedTemplate.values.initialCvl).toString(),
         durationUnits: selectedTemplate.values.duration.units.toString(),
         oneTimeFeeRate: selectedTemplate.values.oneTimeFeeRate.toString(),
+        disburseAllAtActivation: selectedTemplate.values.disburseAllAtActivation,
       }))
     }
   }
@@ -211,6 +235,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
               marginCallCvl: parseFloat(marginCallCvl),
               initialCvl: parseFloat(initialCvl),
               oneTimeFeeRate: parseFloat(oneTimeFeeRate),
+              disburseAllAtActivation: formValues.disburseAllAtActivation,
               duration: {
                 units: parseInt(durationUnits),
                 period: DEFAULT_TERMS.DURATION_PERIOD,
@@ -261,6 +286,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate?.toString(),
+        disburseAllAtActivation: latestTemplate.values.disburseAllAtActivation,
       })
     } else {
       setFormValues(initialFormValues)
@@ -416,6 +442,14 @@ export const CreateCreditFacilityProposalDialog: React.FC<
                   label={t("form.labels.liquidationCvl")}
                   value={formValues.liquidationCvl}
                 />
+                <DetailItem
+                  label={t("form.labels.disburseAllAtActivation")}
+                  value={
+                    formValues.disburseAllAtActivation
+                      ? t("form.values.disburseAllAtActivation.enabled")
+                      : t("form.values.disburseAllAtActivation.disabled")
+                  }
+                />
               </DetailsGroup>
             </>
           ) : (
@@ -494,6 +528,16 @@ export const CreateCreditFacilityProposalDialog: React.FC<
                     min={0}
                     required
                   />
+                </div>
+                <div className="flex items-center space-x-2 sm:col-span-2">
+                  <Checkbox
+                    id="disburseAllAtActivation"
+                    checked={formValues.disburseAllAtActivation}
+                    onCheckedChange={handleDisburseAllAtActivationChange}
+                  />
+                  <Label htmlFor="disburseAllAtActivation">
+                    {t("form.labels.disburseAllAtActivation")}
+                  </Label>
                 </div>
               </div>
             </>
