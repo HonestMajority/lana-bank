@@ -1574,7 +1574,8 @@ impl CreditLedger {
             customer_type,
             duration_type,
             facility_amount,
-            ..
+            debit_account_id,
+            structuring_fee_amount,
         }: CreditFacilityActivation,
         disbursal_id: DisbursalId,
         obligation: Obligation,
@@ -1600,6 +1601,17 @@ impl CreditLedger {
             account_ids.facility_account_id,
         )
         .await?;
+
+        if !structuring_fee_amount.is_zero() {
+            self.add_structuring_fee(
+                &mut op,
+                disbursal_id,
+                account_ids,
+                debit_account_id,
+                structuring_fee_amount,
+            )
+            .await?;
+        }
 
         op.commit().await?;
         Ok(())
