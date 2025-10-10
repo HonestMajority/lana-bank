@@ -185,6 +185,7 @@ impl CreditLedger {
     pub async fn init(cala: &CalaLedger, journal_id: JournalId) -> Result<Self, CreditLedgerError> {
         templates::AddCollateral::init(cala).await?;
         templates::AddStructuringFee::init(cala).await?;
+        templates::ChargeStructuringFee::init(cala).await?;
         templates::ActivateCreditFacility::init(cala).await?;
         templates::RemoveCollateral::init(cala).await?;
         templates::RecordPaymentAllocation::init(cala).await?;
@@ -1603,7 +1604,7 @@ impl CreditLedger {
         .await?;
 
         if !structuring_fee_amount.is_zero() {
-            self.add_structuring_fee(
+            self.charge_structuring_fee(
                 &mut op,
                 disbursal_id,
                 account_ids,
@@ -1695,6 +1696,33 @@ impl CreditLedger {
                     credit_facility_account: account_ids.facility_account_id,
                     facility_disbursed_receivable_account: account_ids
                         .disbursed_receivable_not_yet_due_account_id,
+                    facility_fee_income_account: account_ids.fee_income_account_id,
+                    debit_account_id,
+                    structuring_fee_amount: structuring_fee_amount.to_usd(),
+                    currency: self.usd,
+                    external_id: format!("{}-structuring-fee", disbursal_id),
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn charge_structuring_fee(
+        &self,
+        op: &mut cala_ledger::LedgerOperation<'_>,
+        disbursal_id: DisbursalId,
+        account_ids: CreditFacilityLedgerAccountIds,
+        debit_account_id: CalaAccountId,
+        structuring_fee_amount: UsdCents,
+    ) -> Result<(), CreditLedgerError> {
+        let tx_id = disbursal_id.into();
+        self.cala
+            .post_transaction_in_op(
+                op,
+                tx_id,
+                templates::CHARGE_STRUCTURING_FEE_CODE,
+                templates::ChargeStructuringFeeParams {
+                    journal_id: self.journal_id,
                     facility_fee_income_account: account_ids.fee_income_account_id,
                     debit_account_id,
                     structuring_fee_amount: structuring_fee_amount.to_usd(),
