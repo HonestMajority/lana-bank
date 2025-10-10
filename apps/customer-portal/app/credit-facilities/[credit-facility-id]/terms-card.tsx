@@ -3,7 +3,7 @@ import { DetailItemProps, DetailsCard } from "@lana/web/components/details"
 import React from "react"
 
 import { CreditFacility } from "@/lib/graphql/generated"
-import { formatPeriod, removeUnderscore } from "@/lib/utils"
+import { formatPeriod, hasActivationDrawdown, removeUnderscore } from "@/lib/utils"
 
 function TermsCard({ data }: { data: NonNullable<CreditFacility> }) {
   const terms: DetailItemProps[] = [
@@ -40,6 +40,10 @@ function TermsCard({ data }: { data: NonNullable<CreditFacility> }) {
     {
       label: "Structuring Fee Rate",
       value: `${data.creditFacilityTerms.oneTimeFeeRate}%`,
+    },
+    {
+      label: "Full Disbursal on Activation",
+      value: hasActivationDrawdown(data.creditFacilityTerms) ? "Yes" : "No",
     },
   ]
   return <DetailsCard className="w-full" title="Terms" details={terms} />

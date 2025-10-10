@@ -78,3 +78,19 @@ export const removeUnderscore = (str: string) => {
 export const formatPeriod = (period: Period) => {
   return period.charAt(0).toUpperCase() + period.slice(1).toLowerCase()
 }
+
+type ActivationDrawdownConfig = {
+  disburseFullAmountOnActivation?: boolean | null
+}
+
+const isActivationDrawdownConfig = (
+  terms: unknown,
+): terms is ActivationDrawdownConfig =>
+  typeof terms === "object" &&
+  terms !== null &&
+  "disburseFullAmountOnActivation" in terms
+
+export const hasActivationDrawdown = (terms: unknown): boolean =>
+  isActivationDrawdownConfig(terms)
+    ? Boolean(terms.disburseFullAmountOnActivation)
+    : false

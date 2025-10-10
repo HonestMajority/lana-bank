@@ -17,6 +17,7 @@ pub struct TermValues {
     liquidation_cvl: CVLPct,
     margin_call_cvl: CVLPct,
     initial_cvl: CVLPct,
+    disburse_full_amount_on_activation: bool,
 }
 
 impl From<DomainTermValues> for TermValues {
@@ -30,6 +31,7 @@ impl From<DomainTermValues> for TermValues {
             liquidation_cvl: values.liquidation_cvl.into(),
             margin_call_cvl: values.margin_call_cvl.into(),
             initial_cvl: values.initial_cvl.into(),
+            disburse_full_amount_on_activation: values.disburse_full_amount_on_activation(),
         }
     }
 }
@@ -46,6 +48,7 @@ pub struct TermsInput {
     pub margin_call_cvl: CVLPctValue,
     pub initial_cvl: CVLPctValue,
     pub liquidation_cvl: CVLPctValue,
+    pub disburse_full_amount_on_activation: bool,
 }
 
 #[derive(Enum, Copy, Clone, Eq, PartialEq)]

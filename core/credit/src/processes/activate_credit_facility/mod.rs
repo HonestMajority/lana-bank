@@ -123,7 +123,31 @@ where
             )
             .await?;
 
-        if !credit_facility.structuring_fee().is_zero() {
+        if credit_facility.terms.disburse_full_amount_on_activation() {
+            let (disbursal_id, obligation) = self
+                .disbursals
+                .create_activation_disbursal_for_amount_in_op(
+                    &mut op,
+                    &credit_facility,
+                    credit_facility.amount,
+                )
+                .await?;
+
+            self.ledger
+                .handle_activation_with_initial_disbursal(
+                    op,
+                    credit_facility.activation_data(),
+                    disbursal_id,
+                    obligation,
+                )
+                .await?;
+
+            return Ok(());
+        }
+
+        let structuring_fee_amount = credit_facility.structuring_fee();
+
+        if !structuring_fee_amount.is_zero() {
             let disbursal_id = self
                 .disbursals
                 .create_first_disbursal_in_op(&mut op, &credit_facility)

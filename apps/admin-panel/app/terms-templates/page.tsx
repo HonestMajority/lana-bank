@@ -21,7 +21,7 @@ import {
 } from "@/lib/graphql/generated"
 import { PeriodLabel } from "@/app/credit-facilities/label"
 import { UpdateTermsTemplateDialog } from "@/app/terms-templates/[terms-template-id]/update"
-import { formatCvl } from "@/lib/utils"
+import { formatCvl, hasActivationDrawdown } from "@/lib/utils"
 
 gql`
   fragment TermsTemplateFields on TermsTemplate {
@@ -30,42 +30,43 @@ gql`
     termsId
     createdAt
     userCanUpdateTermsTemplate
-    values {
-      annualRate
-      liquidationCvl {
-        __typename
-        ... on FiniteCVLPct {
-          value
-        }
-        ... on InfiniteCVLPct {
-          isInfinite
-        }
+  values {
+    annualRate
+    liquidationCvl {
+      __typename
+      ... on FiniteCVLPct {
+        value
       }
-      marginCallCvl {
-        __typename
-        ... on FiniteCVLPct {
-          value
-        }
-        ... on InfiniteCVLPct {
-          isInfinite
-        }
-      }
-      initialCvl {
-        __typename
-        ... on FiniteCVLPct {
-          value
-        }
-        ... on InfiniteCVLPct {
-          isInfinite
-        }
-      }
-      oneTimeFeeRate
-      duration {
-        period
-        units
+      ... on InfiniteCVLPct {
+        isInfinite
       }
     }
+    marginCallCvl {
+      __typename
+      ... on FiniteCVLPct {
+        value
+      }
+      ... on InfiniteCVLPct {
+        isInfinite
+      }
+    }
+    initialCvl {
+      __typename
+      ... on FiniteCVLPct {
+        value
+      }
+      ... on InfiniteCVLPct {
+        isInfinite
+      }
+    }
+    oneTimeFeeRate
+    disburseFullAmountOnActivation
+    duration {
+      period
+      units
+    }
   }
+}
 
   query TermsTemplates {
     termsTemplates {
@@ -76,6 +77,7 @@ gql`
 
 const columns = (
   t: ReturnType<typeof useTranslations>,
+  commonT: ReturnType<typeof useTranslations>,
 ): Column<NonNullable<TermsTemplatesQuery["termsTemplates"]>[number]>[] => [
   {
     key: "name",
@@ -110,10 +112,17 @@ const columns = (
     header: t("table.headers.liquidationCvl"),
     render: (values) => formatCvl(values.liquidationCvl),
   },
+  {
+    key: "values",
+    header: t("table.headers.disburseFullAmountOnActivation"),
+    render: (values) =>
+      hasActivationDrawdown(values) ? commonT("yes") : commonT("no"),
+  },
 ]
 
 function TermPage() {
   const t = useTranslations("TermsTemplates")
+  const commonT = useTranslations("Common")
 
   const { data, loading, error } = useTermsTemplatesQuery()
   const [openUpdateTermsTemplateDialog, setOpenUpdateTermsTemplateDialog] =
@@ -146,7 +155,7 @@ function TermPage() {
         <CardContent>
           <DataTable
             data={data?.termsTemplates || []}
-            columns={columns(t)}
+            columns={columns(t, commonT)}
             loading={loading}
             navigateTo={(template) => `/terms-templates/${template.termsId}`}
           />

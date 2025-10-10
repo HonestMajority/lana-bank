@@ -49,6 +49,7 @@ gql`
         accrualCycleInterval
         accrualInterval
         oneTimeFeeRate
+        disburseFullAmountOnActivation
         duration {
           period
           units

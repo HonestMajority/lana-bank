@@ -2462,6 +2462,9 @@ export const mockTermValues = (overrides?: Partial<TermValues>, _relationshipsTo
         accrualCycleInterval: overrides && overrides.hasOwnProperty('accrualCycleInterval') ? overrides.accrualCycleInterval! : mockEnums.interestInterval(),
         accrualInterval: overrides && overrides.hasOwnProperty('accrualInterval') ? overrides.accrualInterval! : mockEnums.interestInterval(),
         annualRate: overrides && overrides.hasOwnProperty('annualRate') ? overrides.annualRate! : faker.number.int({ min: 5, max: 20 }),
+        disburseFullAmountOnActivation: overrides && overrides.hasOwnProperty('disburseFullAmountOnActivation')
+            ? overrides.disburseFullAmountOnActivation!
+            : faker.datatype.boolean(),
         duration: overrides && overrides.hasOwnProperty('duration') ? overrides.duration! : relationshipsToOmit.has('Duration') ? {} as Duration : mockDuration({}, relationshipsToOmit),
         initialCvl: overrides && overrides.hasOwnProperty('initialCvl') ? overrides.initialCvl! : faker.number.int({ min: 95, max: 98 }),
         liquidationCvl: overrides && overrides.hasOwnProperty('liquidationCvl') ? overrides.liquidationCvl! : faker.number.int({ min: 85, max: 88 }),
@@ -2485,6 +2488,10 @@ export const mockTermsInput = (overrides?: Partial<TermsInput>, _relationshipsTo
         obligationLiquidationDurationFromDue: overrides && overrides.hasOwnProperty('obligationLiquidationDurationFromDue') ? overrides.obligationLiquidationDurationFromDue! : relationshipsToOmit.has('DurationInput') ? {} as DurationInput : mockDurationInput({}, relationshipsToOmit),
         obligationOverdueDurationFromDue: overrides && overrides.hasOwnProperty('obligationOverdueDurationFromDue') ? overrides.obligationOverdueDurationFromDue! : relationshipsToOmit.has('DurationInput') ? {} as DurationInput : mockDurationInput({}, relationshipsToOmit),
         oneTimeFeeRate: overrides && overrides.hasOwnProperty('oneTimeFeeRate') ? overrides.oneTimeFeeRate! : faker.lorem.word(),
+        disburseFullAmountOnActivation:
+            overrides && overrides.hasOwnProperty('disburseFullAmountOnActivation')
+                ? overrides.disburseFullAmountOnActivation!
+                : faker.datatype.boolean(),
     };
 };
 

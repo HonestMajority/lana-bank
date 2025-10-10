@@ -12,7 +12,7 @@ import { DetailsCard, DetailItemProps } from "@/components/details"
 import { PeriodLabel } from "@/app/credit-facilities/label"
 import { UpdateTermsTemplateDialog } from "@/app/terms-templates/[terms-template-id]/update"
 import { CreateTermsTemplateDialog } from "@/app/terms-templates/create"
-import { formatCvl } from "@/lib/utils"
+import { formatCvl, hasActivationDrawdown } from "@/lib/utils"
 
 type TermsTemplateDetailsProps = {
   termsTemplate: NonNullable<TermsTemplateQuery["termsTemplate"]>
@@ -22,6 +22,11 @@ const TermsTemplateDetailsCard: React.FC<TermsTemplateDetailsProps> = ({
   termsTemplate,
 }) => {
   const t = useTranslations("TermsTemplates.TermsTemplateDetails.DetailsCard")
+  const commonT = useTranslations("Common")
+
+  const disburseFullAmountOnActivation = hasActivationDrawdown(
+    termsTemplate.values,
+  )
 
   const [openUpdateTermsTemplateDialog, setOpenUpdateTermsTemplateDialog] =
     useState(false)
@@ -59,6 +64,10 @@ const TermsTemplateDetailsCard: React.FC<TermsTemplateDetailsProps> = ({
     {
       label: t("fields.oneTimeFeeRate"),
       value: `${termsTemplate.values.oneTimeFeeRate}%`,
+    },
+    {
+      label: t("fields.disburseFullAmountOnActivation"),
+      value: disburseFullAmountOnActivation ? commonT("yes") : commonT("no"),
     },
   ]
 

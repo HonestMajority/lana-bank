@@ -9,7 +9,7 @@ import { formatDate } from "@lana/web/utils"
 import { GetCreditFacilityLayoutDetailsQuery } from "@/lib/graphql/generated"
 import { PeriodLabel } from "@/app/credit-facilities/label"
 import { DetailsCard, DetailItemProps } from "@/components/details"
-import { formatCvl } from "@/lib/utils"
+import { formatCvl, hasActivationDrawdown } from "@/lib/utils"
 
 type CreditFacilityTermsDialogProps = {
   openTermsDialog: boolean
@@ -25,6 +25,11 @@ export const CreditFacilityTermsDialog: React.FC<CreditFacilityTermsDialogProps>
   creditFacility,
 }) => {
   const t = useTranslations("CreditFacilities.CreditFacilityDetails.TermsDialog")
+  const commonT = useTranslations("Common")
+
+  const disburseFullAmountOnActivation = hasActivationDrawdown(
+    creditFacility.creditFacilityTerms,
+  )
 
   const effectiveRate =
     Number(creditFacility.creditFacilityTerms.annualRate) +
@@ -63,6 +68,10 @@ export const CreditFacilityTermsDialog: React.FC<CreditFacilityTermsDialogProps>
     {
       label: t("details.structuringFeeRate"),
       value: `${creditFacility.creditFacilityTerms.oneTimeFeeRate}%`,
+    },
+    {
+      label: t("details.disburseFullAmountOnActivation"),
+      value: disburseFullAmountOnActivation ? commonT("yes") : commonT("no"),
     },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]

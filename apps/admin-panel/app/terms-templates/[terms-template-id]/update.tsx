@@ -17,13 +17,15 @@ import {
 import { Input } from "@lana/web/ui/input"
 import { Button } from "@lana/web/ui/button"
 import { Label } from "@lana/web/ui/label"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import {
   useUpdateTermsTemplateMutation,
   TermsTemplateFieldsFragment,
+  TermsTemplateUpdateInput,
 } from "@/lib/graphql/generated"
 import { DEFAULT_TERMS } from "@/lib/constants/terms"
-import { getCvlValue } from "@/lib/utils"
+import { getCvlValue, hasActivationDrawdown } from "@/lib/utils"
 
 gql`
   mutation UpdateTermsTemplate($input: TermsTemplateUpdateInput!) {
@@ -59,6 +61,9 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
     initialCvl: termsTemplate.values.initialCvl.toString(),
     oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+    disburseFullAmountOnActivation: hasActivationDrawdown(
+      termsTemplate.values,
+    ),
   })
 
   const [error, setError] = useState<string | null>(null)
@@ -73,6 +78,9 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
         marginCallCvl: getCvlValue(termsTemplate.values.marginCallCvl).toString(),
         initialCvl: getCvlValue(termsTemplate.values.initialCvl).toString(),
         oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          termsTemplate.values,
+        ),
       })
     }
   }, [openUpdateTermsTemplateDialog, termsTemplate])
@@ -85,6 +93,13 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     }))
   }
 
+  const handleDisburseFullAmountChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseFullAmountOnActivation: checked,
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -92,7 +107,7 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     try {
       const { data } = await updateTermsTemplate({
         variables: {
-          input: {
+          input: ({
             id: termsTemplate.termsId,
             annualRate: formValues.annualRate,
             accrualCycleInterval: DEFAULT_TERMS.ACCRUAL_CYCLE_INTERVAL,
@@ -117,7 +132,9 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
             marginCallCvl: formValues.marginCallCvl,
             initialCvl: formValues.initialCvl,
             oneTimeFeeRate: formValues.oneTimeFeeRate,
-          },
+            disburseFullAmountOnActivation:
+              formValues.disburseFullAmountOnActivation,
+          }) as unknown as TermsTemplateUpdateInput,
         },
       })
       if (data?.termsTemplateUpdate.termsTemplate) {
@@ -148,6 +165,9 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
       marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
       initialCvl: termsTemplate.values.initialCvl.toString(),
       oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
+      disburseFullAmountOnActivation: hasActivationDrawdown(
+        termsTemplate.values,
+      ),
     })
     setError(null)
   }
@@ -250,6 +270,23 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
                   onChange={handleChange}
                 />
               </div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="disburseFullAmountOnActivation"
+              checked={formValues.disburseFullAmountOnActivation}
+              onCheckedChange={(checked) =>
+                handleDisburseFullAmountChange(Boolean(checked))
+              }
+            />
+            <div className="grid gap-1 text-sm">
+              <Label htmlFor="disburseFullAmountOnActivation">
+                {t("fields.disburseFullAmountOnActivation")}
+              </Label>
+              <p className="text-muted-foreground">
+                {t("descriptions.disburseFullAmountOnActivation")}
+              </p>
             </div>
           </div>
           {error && <p className="text-destructive">{error}</p>}

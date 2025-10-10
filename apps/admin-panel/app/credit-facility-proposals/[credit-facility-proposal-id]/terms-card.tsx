@@ -6,7 +6,7 @@ import { useTranslations } from "next-intl"
 import { GetCreditFacilityProposalLayoutDetailsQuery } from "@/lib/graphql/generated"
 import { PeriodLabel } from "@/app/credit-facilities/label"
 import { DetailsCard, DetailItemProps } from "@/components/details"
-import { formatCvl } from "@/lib/utils"
+import { formatCvl, hasActivationDrawdown } from "@/lib/utils"
 
 type CreditFacilityTermsCardProps = {
   creditFacilityProposal: NonNullable<
@@ -19,6 +19,11 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
 }) => {
   const t = useTranslations("CreditFacilities.CreditFacilityDetails.TermsDialog")
   const tCard = useTranslations("CreditFacilityProposals.ProposalDetails.TermsCard")
+  const commonT = useTranslations("Common")
+
+  const disburseFullAmountOnActivation = hasActivationDrawdown(
+    creditFacilityProposal.creditFacilityTerms,
+  )
 
   const effectiveRate =
     Number(creditFacilityProposal.creditFacilityTerms.annualRate) +
@@ -55,6 +60,10 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
     {
       label: t("details.structuringFeeRate"),
       value: `${creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate}%`,
+    },
+    {
+      label: t("details.disburseFullAmountOnActivation"),
+      value: disburseFullAmountOnActivation ? commonT("yes") : commonT("no"),
     },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]
