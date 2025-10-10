@@ -19,10 +19,19 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
 }) => {
   const t = useTranslations("CreditFacilities.CreditFacilityDetails.TermsDialog")
   const tCard = useTranslations("CreditFacilityProposals.ProposalDetails.TermsCard")
+  const commonT = useTranslations("Common")
+
+  const disburseFullAmountOnActivation = Boolean(
+    (creditFacilityProposal.creditFacilityTerms as unknown as {
+      disburseFullAmountOnActivation?: boolean
+    }).disburseFullAmountOnActivation,
+  )
 
   const effectiveRate =
     Number(creditFacilityProposal.creditFacilityTerms.annualRate) +
-    Number(creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate)
+    (disburseFullAmountOnActivation
+      ? 0
+      : Number(creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate))
 
   const details: DetailItemProps[] = [
     {
@@ -55,6 +64,10 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
     {
       label: t("details.structuringFeeRate"),
       value: `${creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate}%`,
+    },
+    {
+      label: t("details.disburseFullAmountOnActivation"),
+      value: disburseFullAmountOnActivation ? commonT("yes") : commonT("no"),
     },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]

@@ -13,8 +13,15 @@ function calculateTotalCostInCents(
     GetCreditFacilityLayoutDetailsQuery["creditFacilityByPublicId"]
   >,
 ): number {
+  const { oneTimeFeeRate } = creditFacility.creditFacilityTerms
+  const disburseFullAmountOnActivation = Boolean(
+    (creditFacility.creditFacilityTerms as unknown as {
+      disburseFullAmountOnActivation?: boolean
+    }).disburseFullAmountOnActivation,
+  )
+
   const feeRateBN = new BigNumber(
-    creditFacility.creditFacilityTerms.oneTimeFeeRate ?? 0,
+    disburseFullAmountOnActivation ? 0 : (oneTimeFeeRate ?? 0),
   ).div(100)
 
   const facilityAmountCentsBN = new BigNumber(creditFacility.facilityAmount ?? 0)

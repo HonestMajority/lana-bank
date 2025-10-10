@@ -41,6 +41,14 @@ function TermsCard({ data }: { data: NonNullable<CreditFacility> }) {
       label: "Structuring Fee Rate",
       value: `${data.creditFacilityTerms.oneTimeFeeRate}%`,
     },
+    {
+      label: "Full Disbursal on Activation",
+      value: (data.creditFacilityTerms as unknown as {
+        disburseFullAmountOnActivation?: boolean
+      }).disburseFullAmountOnActivation
+        ? "Yes"
+        : "No",
+    },
   ]
   return <DetailsCard className="w-full" title="Terms" details={terms} />
 }

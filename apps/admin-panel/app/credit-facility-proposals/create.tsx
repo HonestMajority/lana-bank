@@ -14,6 +14,7 @@ import {
 } from "@lana/web/ui/dialog"
 import { Input } from "@lana/web/ui/input"
 import { Label } from "@lana/web/ui/label"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import { Button } from "@lana/web/ui/button"
 import {
@@ -31,6 +32,7 @@ import {
   useGetRealtimePriceUpdatesQuery,
   useTermsTemplatesQuery,
   useCustodiansQuery,
+  CreditFacilityProposalCreateInput,
 } from "@/lib/graphql/generated"
 import {
   currencyConverter,
@@ -79,6 +81,7 @@ const initialFormValues = {
   initialCvl: "",
   durationUnits: "",
   oneTimeFeeRate: "",
+  disburseFullAmountOnActivation: false,
 }
 
 export const CreateCreditFacilityProposalDialog: React.FC<
@@ -137,6 +140,11 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate.toString(),
+        disburseFullAmountOnActivation: Boolean(
+          (latestTemplate.values as unknown as {
+            disburseFullAmountOnActivation?: boolean
+          }).disburseFullAmountOnActivation,
+        ),
       }))
     }
   }, [termsTemplatesData])
@@ -148,6 +156,14 @@ export const CreateCreditFacilityProposalDialog: React.FC<
       [name]: value,
     }))
     if (name === "facility") return
+    setSelectedTemplateId("")
+  }
+
+  const handleDisburseFullAmountChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseFullAmountOnActivation: checked,
+    }))
     setSelectedTemplateId("")
   }
 
@@ -165,6 +181,11 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(selectedTemplate.values.initialCvl).toString(),
         durationUnits: selectedTemplate.values.duration.units.toString(),
         oneTimeFeeRate: selectedTemplate.values.oneTimeFeeRate.toString(),
+        disburseFullAmountOnActivation: Boolean(
+          (selectedTemplate.values as unknown as {
+            disburseFullAmountOnActivation?: boolean
+          }).disburseFullAmountOnActivation,
+        ),
       }))
     }
   }
@@ -180,6 +201,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
       initialCvl,
       durationUnits,
       oneTimeFeeRate,
+      disburseFullAmountOnActivation,
     } = formValues
 
     if (
@@ -198,7 +220,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
     try {
       await createCreditFacility({
         variables: {
-          input: {
+          input: ({
             disbursalCreditAccountId,
             customerId,
             facility: currencyConverter.usdToCents(Number(facility)),
@@ -211,6 +233,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
               marginCallCvl: parseFloat(marginCallCvl),
               initialCvl: parseFloat(initialCvl),
               oneTimeFeeRate: parseFloat(oneTimeFeeRate),
+              disburseFullAmountOnActivation,
               duration: {
                 units: parseInt(durationUnits),
                 period: DEFAULT_TERMS.DURATION_PERIOD,
@@ -228,7 +251,7 @@ export const CreateCreditFacilityProposalDialog: React.FC<
                 units: DEFAULT_TERMS.OBLIGATION_LIQUIDATION_DURATION_FROM_DUE.UNITS,
               },
             },
-          },
+          }) as unknown as CreditFacilityProposalCreateInput,
         },
         onCompleted: (data) => {
           if (data.creditFacilityProposalCreate) {
@@ -261,6 +284,11 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate?.toString(),
+        disburseFullAmountOnActivation: Boolean(
+          (latestTemplate.values as unknown as {
+            disburseFullAmountOnActivation?: boolean
+          }).disburseFullAmountOnActivation,
+        ),
       })
     } else {
       setFormValues(initialFormValues)
@@ -413,6 +441,14 @@ export const CreateCreditFacilityProposalDialog: React.FC<
                   value={formValues.oneTimeFeeRate}
                 />
                 <DetailItem
+                  label={t("form.labels.disburseFullAmountOnActivation")}
+                  value={
+                    formValues.disburseFullAmountOnActivation
+                      ? commonT("yes")
+                      : commonT("no")
+                  }
+                />
+                <DetailItem
                   label={t("form.labels.liquidationCvl")}
                   value={formValues.liquidationCvl}
                 />
@@ -494,6 +530,23 @@ export const CreateCreditFacilityProposalDialog: React.FC<
                     min={0}
                     required
                   />
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  id="disburseFullAmountOnActivation"
+                  checked={formValues.disburseFullAmountOnActivation}
+                  onCheckedChange={(checked) =>
+                    handleDisburseFullAmountChange(Boolean(checked))
+                  }
+                />
+                <div className="grid gap-1 text-sm">
+                  <Label htmlFor="disburseFullAmountOnActivation">
+                    {t("form.labels.disburseFullAmountOnActivation")}
+                  </Label>
+                  <p className="text-muted-foreground">
+                    {t("form.descriptions.disburseFullAmountOnActivation")}
+                  </p>
                 </div>
               </div>
             </>

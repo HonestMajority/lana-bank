@@ -17,10 +17,12 @@ import {
 import { Input } from "@lana/web/ui/input"
 import { Button } from "@lana/web/ui/button"
 import { Label } from "@lana/web/ui/label"
+import { Checkbox } from "@lana/web/ui/check-box"
 
 import {
   useCreateTermsTemplateMutation,
   TermsTemplateFieldsFragment,
+  TermsTemplateCreateInput,
 } from "@/lib/graphql/generated"
 import { DEFAULT_TERMS } from "@/lib/constants/terms"
 import { useModalNavigation } from "@/hooks/use-modal-navigation"
@@ -77,6 +79,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
     initialCvl: "",
     durationUnits: "",
     oneTimeFeeRate: "",
+    disburseFullAmountOnActivation: false,
   })
   const [error, setError] = useState<string | null>(null)
 
@@ -90,6 +93,11 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
         initialCvl: getCvlValue(templateToDuplicate.values.initialCvl).toString(),
         durationUnits: templateToDuplicate.values.duration.units.toString(),
         oneTimeFeeRate: templateToDuplicate.values.oneTimeFeeRate.toString(),
+        disburseFullAmountOnActivation: Boolean(
+          (templateToDuplicate.values as unknown as {
+            disburseFullAmountOnActivation?: boolean
+          }).disburseFullAmountOnActivation,
+        ),
       })
     }
   }, [templateToDuplicate, openCreateTermsTemplateDialog])
@@ -102,6 +110,13 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
     }))
   }
 
+  const handleDisburseFullAmountChange = (checked: boolean) => {
+    setFormValues((prevValues) => ({
+      ...prevValues,
+      disburseFullAmountOnActivation: checked,
+    }))
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError(null)
@@ -109,7 +124,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
     try {
       await createTermsTemplate({
         variables: {
-          input: {
+          input: ({
             name: formValues.name,
             annualRate: formValues.annualRate,
             accrualCycleInterval: DEFAULT_TERMS.ACCRUAL_CYCLE_INTERVAL,
@@ -134,7 +149,9 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
             marginCallCvl: formValues.marginCallCvl,
             initialCvl: formValues.initialCvl,
             oneTimeFeeRate: formValues.oneTimeFeeRate,
-          },
+            disburseFullAmountOnActivation:
+              formValues.disburseFullAmountOnActivation,
+          }) as unknown as TermsTemplateCreateInput,
         },
         onCompleted: (data) => {
           toast.success(t("success.created"))
@@ -163,6 +180,7 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
       initialCvl: "",
       durationUnits: "",
       oneTimeFeeRate: "",
+      disburseFullAmountOnActivation: false,
     })
     setError(null)
   }
@@ -296,6 +314,24 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
                   data-testid="terms-template-liquidation-cvl-input"
                 />
               </div>
+            </div>
+          </div>
+          <div className="flex items-start gap-2">
+            <Checkbox
+              id="disburseFullAmountOnActivation"
+              checked={formValues.disburseFullAmountOnActivation}
+              onCheckedChange={(checked) =>
+                handleDisburseFullAmountChange(Boolean(checked))
+              }
+              disabled={isLoading}
+            />
+            <div className="grid gap-1 text-sm">
+              <Label htmlFor="disburseFullAmountOnActivation">
+                {t("fields.disburseFullAmountOnActivation")}
+              </Label>
+              <p className="text-muted-foreground">
+                {t("descriptions.disburseFullAmountOnActivation")}
+              </p>
             </div>
           </div>
           {error && <p className="text-destructive">{error}</p>}
