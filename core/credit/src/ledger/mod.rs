@@ -1563,6 +1563,48 @@ impl CreditLedger {
         Ok(())
     }
 
+    pub async fn handle_activation_with_initial_disbursal(
+        &self,
+        op: es_entity::DbOpWithTime<'_>,
+        CreditFacilityActivation {
+            credit_facility_id,
+            tx_id,
+            tx_ref,
+            account_ids,
+            customer_type,
+            duration_type,
+            facility_amount,
+            ..
+        }: CreditFacilityActivation,
+        disbursal_id: DisbursalId,
+        obligation: Obligation,
+    ) -> Result<(), CreditLedgerError> {
+        let mut op = self.cala.ledger_operation_from_db_op(op);
+
+        self.create_accounts_for_credit_facility(
+            &mut op,
+            credit_facility_id,
+            account_ids,
+            customer_type,
+            duration_type,
+        )
+        .await?;
+
+        self.activate_credit_facility(&mut op, tx_id, account_ids, facility_amount, tx_ref)
+            .await?;
+
+        self.confirm_disbursal(
+            &mut op,
+            disbursal_id,
+            obligation,
+            account_ids.facility_account_id,
+        )
+        .await?;
+
+        op.commit().await?;
+        Ok(())
+    }
+
     pub async fn handle_facility_activation(
         &self,
         op: es_entity::DbOpWithTime<'_>,
@@ -1646,6 +1688,43 @@ impl CreditLedger {
                     structuring_fee_amount: structuring_fee_amount.to_usd(),
                     currency: self.usd,
                     external_id: format!("{}-structuring-fee", disbursal_id),
+                },
+            )
+            .await?;
+        Ok(())
+    }
+
+    async fn confirm_disbursal(
+        &self,
+        op: &mut cala_ledger::LedgerOperation<'_>,
+        entity_id: DisbursalId,
+        obligation: Obligation,
+        facility_account_id: CalaAccountId,
+    ) -> Result<(), CreditLedgerError> {
+        let facility_disbursed_receivable_account =
+            obligation.not_yet_due_accounts().receivable_account_id;
+        let account_to_be_credited_id = obligation.not_yet_due_accounts().account_to_be_credited_id;
+        let Obligation {
+            tx_id,
+            reference: external_id,
+            initial_amount: amount,
+            ..
+        } = obligation;
+
+        self.cala
+            .post_transaction_in_op(
+                op,
+                tx_id,
+                templates::CONFIRM_DISBURSAL_CODE,
+                templates::ConfirmDisbursalParams {
+                    entity_id: entity_id.into(),
+                    journal_id: self.journal_id,
+                    credit_omnibus_account: self.facility_omnibus_account_ids.account_id,
+                    credit_facility_account: facility_account_id,
+                    facility_disbursed_receivable_account,
+                    account_to_be_credited_id,
+                    disbursed_amount: amount.to_usd(),
+                    external_id,
                 },
             )
             .await?;
@@ -1787,33 +1866,8 @@ impl CreditLedger {
         obligation: Obligation,
         facility_account_id: CalaAccountId,
     ) -> Result<(), CreditLedgerError> {
-        let facility_disbursed_receivable_account =
-            obligation.not_yet_due_accounts().receivable_account_id;
-        let account_to_be_credited_id = obligation.not_yet_due_accounts().account_to_be_credited_id;
-        let Obligation {
-            tx_id,
-            reference: external_id,
-            initial_amount: amount,
-            ..
-        } = obligation;
-
         let mut op = self.cala.ledger_operation_from_db_op(op);
-        self.cala
-            .post_transaction_in_op(
-                &mut op,
-                tx_id,
-                templates::CONFIRM_DISBURSAL_CODE,
-                templates::ConfirmDisbursalParams {
-                    entity_id: entity_id.into(),
-                    journal_id: self.journal_id,
-                    credit_omnibus_account: self.facility_omnibus_account_ids.account_id,
-                    credit_facility_account: facility_account_id,
-                    facility_disbursed_receivable_account,
-                    account_to_be_credited_id,
-                    disbursed_amount: amount.to_usd(),
-                    external_id,
-                },
-            )
+        self.confirm_disbursal(&mut op, entity_id, obligation, facility_account_id)
             .await?;
         op.commit().await?;
         Ok(())

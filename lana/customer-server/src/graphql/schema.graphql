@@ -351,9 +351,10 @@ type TermValues {
 	accrualCycleInterval: InterestInterval!
 	oneTimeFeeRate: OneTimeFeeRatePct!
 	duration: Duration!
-	liquidationCvl: CVLPct!
-	marginCallCvl: CVLPct!
-	initialCvl: CVLPct!
+        liquidationCvl: CVLPct!
+        marginCallCvl: CVLPct!
+        initialCvl: CVLPct!
+        disburseFullAmountOnActivation: Boolean!
 }
 
 scalar Timestamp

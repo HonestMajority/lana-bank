@@ -2479,6 +2479,7 @@ export type TermValues = {
   accrualCycleInterval: InterestInterval;
   accrualInterval: InterestInterval;
   annualRate: Scalars['AnnualRatePct']['output'];
+  disburseFullAmountOnActivation: Scalars['Boolean']['output'];
   duration: Duration;
   initialCvl: Cvlpct;
   liquidationCvl: Cvlpct;
@@ -2490,6 +2491,7 @@ export type TermsInput = {
   accrualCycleInterval: InterestInterval;
   accrualInterval: InterestInterval;
   annualRate: Scalars['AnnualRatePct']['input'];
+  disburseFullAmountOnActivation: Scalars['Boolean']['input'];
   duration: DurationInput;
   initialCvl: Scalars['CVLPctValue']['input'];
   interestDueDurationFromAccrual: DurationInput;

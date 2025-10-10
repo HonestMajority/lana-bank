@@ -1981,23 +1981,25 @@ type TermValues {
 	accrualCycleInterval: InterestInterval!
 	oneTimeFeeRate: OneTimeFeeRatePct!
 	duration: Duration!
-	liquidationCvl: Cvlpct!
-	marginCallCvl: Cvlpct!
-	initialCvl: Cvlpct!
+        liquidationCvl: Cvlpct!
+        marginCallCvl: Cvlpct!
+        initialCvl: Cvlpct!
+        disburseFullAmountOnActivation: Boolean!
 }
 
 input TermsInput {
-	annualRate: AnnualRatePct!
-	accrualInterval: InterestInterval!
-	accrualCycleInterval: InterestInterval!
-	oneTimeFeeRate: OneTimeFeeRatePct!
-	duration: DurationInput!
-	interestDueDurationFromAccrual: DurationInput!
-	obligationOverdueDurationFromDue: DurationInput!
-	obligationLiquidationDurationFromDue: DurationInput!
-	marginCallCvl: CVLPctValue!
-	initialCvl: CVLPctValue!
-	liquidationCvl: CVLPctValue!
+        annualRate: AnnualRatePct!
+        accrualInterval: InterestInterval!
+        accrualCycleInterval: InterestInterval!
+        oneTimeFeeRate: OneTimeFeeRatePct!
+        duration: DurationInput!
+        interestDueDurationFromAccrual: DurationInput!
+        obligationOverdueDurationFromDue: DurationInput!
+        obligationLiquidationDurationFromDue: DurationInput!
+        marginCallCvl: CVLPctValue!
+        initialCvl: CVLPctValue!
+        liquidationCvl: CVLPctValue!
+        disburseFullAmountOnActivation: Boolean!
 }
 
 type TermsTemplate {
