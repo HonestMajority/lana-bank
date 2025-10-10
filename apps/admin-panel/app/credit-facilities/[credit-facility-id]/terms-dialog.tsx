@@ -67,7 +67,9 @@ export const CreditFacilityTermsDialog: React.FC<CreditFacilityTermsDialogProps>
     },
     {
       label: t("details.disburseAllAtActivation"),
-      value: creditFacility.creditFacilityTerms.disburseAllAtActivation ? commonT("yes") : commonT("no"),
+      value: creditFacility.creditFacilityTerms.disburseAllAtActivation
+        ? commonT("yes")
+        : commonT("no"),
     },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]

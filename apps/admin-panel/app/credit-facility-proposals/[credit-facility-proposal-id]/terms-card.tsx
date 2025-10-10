@@ -59,7 +59,9 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
     },
     {
       label: t("details.disburseAllAtActivation"),
-      value: creditFacilityProposal.creditFacilityTerms.disburseAllAtActivation ? commonT("yes") : commonT("no"),
+      value: creditFacilityProposal.creditFacilityTerms.disburseAllAtActivation
+        ? commonT("yes")
+        : commonT("no"),
     },
     { label: t("details.effectiveRate"), value: `${effectiveRate}%` },
   ]
