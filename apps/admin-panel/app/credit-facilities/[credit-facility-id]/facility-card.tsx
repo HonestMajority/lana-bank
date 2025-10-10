@@ -14,15 +14,8 @@ function calculateTotalCostInCents(
   >,
 ): number {
   const { oneTimeFeeRate } = creditFacility.creditFacilityTerms
-  const disburseFullAmountOnActivation = Boolean(
-    (creditFacility.creditFacilityTerms as unknown as {
-      disburseFullAmountOnActivation?: boolean
-    }).disburseFullAmountOnActivation,
-  )
 
-  const feeRateBN = new BigNumber(
-    disburseFullAmountOnActivation ? 0 : (oneTimeFeeRate ?? 0),
-  ).div(100)
+  const feeRateBN = new BigNumber(oneTimeFeeRate ?? 0).div(100)
 
   const facilityAmountCentsBN = new BigNumber(creditFacility.facilityAmount ?? 0)
   const oneTimeFeeCentsBN = facilityAmountCentsBN.multipliedBy(feeRateBN)
