@@ -38,6 +38,7 @@ import {
   currencyConverter,
   calculateInitialCollateralRequired,
   getCvlValue,
+  hasActivationDrawdown,
 } from "@/lib/utils"
 import { DetailItem, DetailsGroup } from "@/components/details"
 import Balance from "@/components/balance/balance"
@@ -140,10 +141,8 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate.toString(),
-        disburseFullAmountOnActivation: Boolean(
-          (latestTemplate.values as unknown as {
-            disburseFullAmountOnActivation?: boolean
-          }).disburseFullAmountOnActivation,
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          latestTemplate.values,
         ),
       }))
     }
@@ -181,10 +180,8 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(selectedTemplate.values.initialCvl).toString(),
         durationUnits: selectedTemplate.values.duration.units.toString(),
         oneTimeFeeRate: selectedTemplate.values.oneTimeFeeRate.toString(),
-        disburseFullAmountOnActivation: Boolean(
-          (selectedTemplate.values as unknown as {
-            disburseFullAmountOnActivation?: boolean
-          }).disburseFullAmountOnActivation,
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          selectedTemplate.values,
         ),
       }))
     }
@@ -284,10 +281,8 @@ export const CreateCreditFacilityProposalDialog: React.FC<
         initialCvl: getCvlValue(latestTemplate.values.initialCvl).toString(),
         durationUnits: latestTemplate.values.duration.units.toString(),
         oneTimeFeeRate: latestTemplate.values.oneTimeFeeRate?.toString(),
-        disburseFullAmountOnActivation: Boolean(
-          (latestTemplate.values as unknown as {
-            disburseFullAmountOnActivation?: boolean
-          }).disburseFullAmountOnActivation,
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          latestTemplate.values,
         ),
       })
     } else {

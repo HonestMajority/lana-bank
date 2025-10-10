@@ -25,7 +25,7 @@ import {
   TermsTemplateUpdateInput,
 } from "@/lib/graphql/generated"
 import { DEFAULT_TERMS } from "@/lib/constants/terms"
-import { getCvlValue } from "@/lib/utils"
+import { getCvlValue, hasActivationDrawdown } from "@/lib/utils"
 
 gql`
   mutation UpdateTermsTemplate($input: TermsTemplateUpdateInput!) {
@@ -61,10 +61,8 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
     marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
     initialCvl: termsTemplate.values.initialCvl.toString(),
     oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
-    disburseFullAmountOnActivation: Boolean(
-      (termsTemplate.values as unknown as {
-        disburseFullAmountOnActivation?: boolean
-      }).disburseFullAmountOnActivation,
+    disburseFullAmountOnActivation: hasActivationDrawdown(
+      termsTemplate.values,
     ),
   })
 
@@ -80,10 +78,8 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
         marginCallCvl: getCvlValue(termsTemplate.values.marginCallCvl).toString(),
         initialCvl: getCvlValue(termsTemplate.values.initialCvl).toString(),
         oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
-        disburseFullAmountOnActivation: Boolean(
-          (termsTemplate.values as unknown as {
-            disburseFullAmountOnActivation?: boolean
-          }).disburseFullAmountOnActivation,
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          termsTemplate.values,
         ),
       })
     }
@@ -169,10 +165,8 @@ export const UpdateTermsTemplateDialog: React.FC<UpdateTermsTemplateDialogProps>
       marginCallCvl: termsTemplate.values.marginCallCvl.toString(),
       initialCvl: termsTemplate.values.initialCvl.toString(),
       oneTimeFeeRate: termsTemplate.values.oneTimeFeeRate.toString(),
-      disburseFullAmountOnActivation: Boolean(
-        (termsTemplate.values as unknown as {
-          disburseFullAmountOnActivation?: boolean
-        }).disburseFullAmountOnActivation,
+      disburseFullAmountOnActivation: hasActivationDrawdown(
+        termsTemplate.values,
       ),
     })
     setError(null)

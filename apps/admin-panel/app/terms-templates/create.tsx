@@ -26,7 +26,7 @@ import {
 } from "@/lib/graphql/generated"
 import { DEFAULT_TERMS } from "@/lib/constants/terms"
 import { useModalNavigation } from "@/hooks/use-modal-navigation"
-import { getCvlValue } from "@/lib/utils"
+import { getCvlValue, hasActivationDrawdown } from "@/lib/utils"
 
 gql`
   mutation CreateTermsTemplate($input: TermsTemplateCreateInput!) {
@@ -93,10 +93,8 @@ export const CreateTermsTemplateDialog: React.FC<CreateTermsTemplateDialogProps>
         initialCvl: getCvlValue(templateToDuplicate.values.initialCvl).toString(),
         durationUnits: templateToDuplicate.values.duration.units.toString(),
         oneTimeFeeRate: templateToDuplicate.values.oneTimeFeeRate.toString(),
-        disburseFullAmountOnActivation: Boolean(
-          (templateToDuplicate.values as unknown as {
-            disburseFullAmountOnActivation?: boolean
-          }).disburseFullAmountOnActivation,
+        disburseFullAmountOnActivation: hasActivationDrawdown(
+          templateToDuplicate.values,
         ),
       })
     }

@@ -21,7 +21,7 @@ import {
 } from "@/lib/graphql/generated"
 import { PeriodLabel } from "@/app/credit-facilities/label"
 import { UpdateTermsTemplateDialog } from "@/app/terms-templates/[terms-template-id]/update"
-import { formatCvl } from "@/lib/utils"
+import { formatCvl, hasActivationDrawdown } from "@/lib/utils"
 
 gql`
   fragment TermsTemplateFields on TermsTemplate {
@@ -116,10 +116,7 @@ const columns = (
     key: "values",
     header: t("table.headers.disburseFullAmountOnActivation"),
     render: (values) =>
-      ((values as unknown as { disburseFullAmountOnActivation?: boolean })
-        .disburseFullAmountOnActivation
-        ? commonT("yes")
-        : commonT("no")),
+      hasActivationDrawdown(values) ? commonT("yes") : commonT("no"),
   },
 ]
 

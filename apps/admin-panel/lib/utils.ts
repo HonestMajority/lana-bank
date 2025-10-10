@@ -144,3 +144,19 @@ export const formatCvl = (cvl: CvlPctDataFragment): string =>
 
 export const getCvlValue = (cvl: CvlPctDataFragment): number =>
   cvl.__typename === "FiniteCVLPct" ? Number(cvl.value) : Infinity
+
+type ActivationDrawdownConfig = {
+  disburseFullAmountOnActivation?: boolean | null
+}
+
+const isActivationDrawdownConfig = (
+  terms: unknown,
+): terms is ActivationDrawdownConfig =>
+  typeof terms === "object" &&
+  terms !== null &&
+  "disburseFullAmountOnActivation" in terms
+
+export const hasActivationDrawdown = (terms: unknown): boolean =>
+  isActivationDrawdownConfig(terms)
+    ? Boolean(terms.disburseFullAmountOnActivation)
+    : false
