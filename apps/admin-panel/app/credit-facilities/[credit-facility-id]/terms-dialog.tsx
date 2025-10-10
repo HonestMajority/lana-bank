@@ -33,9 +33,7 @@ export const CreditFacilityTermsDialog: React.FC<CreditFacilityTermsDialogProps>
 
   const effectiveRate =
     Number(creditFacility.creditFacilityTerms.annualRate) +
-    (disburseFullAmountOnActivation
-      ? 0
-      : Number(creditFacility.creditFacilityTerms.oneTimeFeeRate))
+    Number(creditFacility.creditFacilityTerms.oneTimeFeeRate)
 
   const details: DetailItemProps[] = [
     {

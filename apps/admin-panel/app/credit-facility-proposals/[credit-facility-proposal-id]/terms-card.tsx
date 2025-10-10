@@ -27,9 +27,7 @@ export const CreditFacilityTermsCard: React.FC<CreditFacilityTermsCardProps> = (
 
   const effectiveRate =
     Number(creditFacilityProposal.creditFacilityTerms.annualRate) +
-    (disburseFullAmountOnActivation
-      ? 0
-      : Number(creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate))
+    Number(creditFacilityProposal.creditFacilityTerms.oneTimeFeeRate)
 
   const details: DetailItemProps[] = [
     {
