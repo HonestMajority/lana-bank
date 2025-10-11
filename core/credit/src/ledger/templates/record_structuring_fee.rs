@@ -13,8 +13,8 @@ pub const RECORD_STRUCTURING_FEE_CODE: &str = "RECORD_STRUCTURING_FEE";
 #[derive(Debug)]
 pub struct RecordStructuringFeeParams {
     pub journal_id: JournalId,
-    pub debit_account_id: CalaAccountId,
     pub facility_fee_income_account: CalaAccountId,
+    pub debit_account_id: CalaAccountId,
     pub structuring_fee_amount: Decimal,
     pub currency: Currency,
     pub external_id: String,
@@ -29,12 +29,12 @@ impl RecordStructuringFeeParams {
                 .build()
                 .unwrap(),
             NewParamDefinition::builder()
-                .name("debit_account_id")
+                .name("facility_fee_income_account")
                 .r#type(ParamDataType::Uuid)
                 .build()
                 .unwrap(),
             NewParamDefinition::builder()
-                .name("facility_fee_income_account")
+                .name("debit_account_id")
                 .r#type(ParamDataType::Uuid)
                 .build()
                 .unwrap(),
@@ -66,8 +66,8 @@ impl From<RecordStructuringFeeParams> for Params {
     fn from(
         RecordStructuringFeeParams {
             journal_id,
-            debit_account_id,
             facility_fee_income_account,
+            debit_account_id,
             structuring_fee_amount,
             currency,
             external_id,
@@ -75,8 +75,8 @@ impl From<RecordStructuringFeeParams> for Params {
     ) -> Self {
         let mut params = Self::default();
         params.insert("journal_id", journal_id);
-        params.insert("debit_account_id", debit_account_id);
         params.insert("facility_fee_income_account", facility_fee_income_account);
+        params.insert("debit_account_id", debit_account_id);
         params.insert("structuring_fee_amount", structuring_fee_amount);
         params.insert("currency", currency);
         params.insert("external_id", external_id);
