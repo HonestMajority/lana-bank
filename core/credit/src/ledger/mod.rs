@@ -1560,9 +1560,12 @@ impl CreditLedger {
         .await?;
 
         if !structuring_fee_amount.is_zero() {
+            let structuring_fee_tx_id: LedgerTxId = disbursal_id.into();
+            let structuring_fee_external_id = format!("{}-structuring-fee", disbursal_id);
             self.record_structuring_fee(
                 &mut op,
-                disbursal_id,
+                structuring_fee_tx_id,
+                structuring_fee_external_id,
                 debit_account_id,
                 structuring_fee_amount,
                 account_ids.fee_income_account_id,
@@ -1632,18 +1635,16 @@ impl CreditLedger {
         Ok(())
     }
 
-    /// Record the structuring fee by moving cash to fee income.
-    ///
-    /// The disbursal drawdown must already have been posted.
+    /// Record the structuring fee by moving cash to fee income on the provided ledger transaction.
     async fn record_structuring_fee(
         &self,
         op: &mut cala_ledger::LedgerOperation<'_>,
-        disbursal_id: DisbursalId,
+        tx_id: LedgerTxId,
+        external_id: String,
         debit_account_id: CalaAccountId,
         structuring_fee_amount: UsdCents,
         fee_income_account_id: CalaAccountId,
     ) -> Result<(), CreditLedgerError> {
-        let tx_id = disbursal_id.into();
         self.cala
             .post_transaction_in_op(
                 op,
@@ -1655,7 +1656,7 @@ impl CreditLedger {
                     facility_fee_income_account: fee_income_account_id,
                     structuring_fee_amount: structuring_fee_amount.to_usd(),
                     currency: self.usd,
-                    external_id: format!("{}-structuring-fee", disbursal_id),
+                    external_id,
                 },
             )
             .await?;
