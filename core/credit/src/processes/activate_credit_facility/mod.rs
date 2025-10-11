@@ -133,7 +133,7 @@ where
                 .await?;
 
             self.ledger
-                .handle_activation_with_initial_disbursal(
+                .handle_activation_with_disbursal(
                     op,
                     credit_facility.activation_data(),
                     disbursal_id,
@@ -153,7 +153,7 @@ where
                 .await?;
 
             self.ledger
-                .handle_activation_with_structuring_fee(
+                .handle_activation_with_disbursal(
                     op,
                     credit_facility.activation_data(),
                     disbursal_id,

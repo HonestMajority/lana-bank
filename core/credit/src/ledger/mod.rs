@@ -1520,59 +1520,7 @@ impl CreditLedger {
         Ok(())
     }
 
-    pub async fn handle_activation_with_structuring_fee(
-        &self,
-        op: es_entity::DbOpWithTime<'_>,
-        CreditFacilityActivation {
-            credit_facility_id,
-            tx_id,
-            tx_ref,
-            account_ids,
-            customer_type,
-            duration_type,
-            facility_amount,
-            debit_account_id,
-            structuring_fee_amount,
-        }: CreditFacilityActivation,
-        disbursal_id: DisbursalId,
-        obligation: Obligation,
-    ) -> Result<(), CreditLedgerError> {
-        let mut op = self.cala.ledger_operation_from_db_op(op);
-
-        self.create_accounts_for_credit_facility(
-            &mut op,
-            credit_facility_id,
-            account_ids,
-            customer_type,
-            duration_type,
-        )
-        .await?;
-
-        self.activate_credit_facility(&mut op, tx_id, account_ids, facility_amount, tx_ref)
-            .await?;
-
-        self.confirm_disbursal(
-            &mut op,
-            disbursal_id,
-            obligation,
-            account_ids.facility_account_id,
-        )
-        .await?;
-
-        self.record_structuring_fee(
-            &mut op,
-            disbursal_id,
-            debit_account_id,
-            structuring_fee_amount,
-            account_ids.fee_income_account_id,
-        )
-        .await?;
-
-        op.commit().await?;
-        Ok(())
-    }
-
-    pub async fn handle_activation_with_initial_disbursal(
+    pub async fn handle_activation_with_disbursal(
         &self,
         op: es_entity::DbOpWithTime<'_>,
         CreditFacilityActivation {
