@@ -107,7 +107,7 @@ wait_for_full_activation_disbursal() {
   )
   exec_admin_graphql 'find-credit-facility' "$variables"
 
-  facility_amount=$(graphql_output '.data.creditFacility.facilityAmount')
+  facility_amount=$(graphql_output '.data.creditFacility.facilityAmount.usdBalance')
   [[ "$facility_amount" != "null" ]] || exit 1
 
   disbursal_count=$(graphql_output '.data.creditFacility.disbursals | length')
@@ -397,9 +397,8 @@ ymd() {
     '{ id: $creditFacilityId }'
   )
   exec_admin_graphql 'find-credit-facility' "$variables"
-  facility_amount=$(graphql_output '.data.creditFacility.facilityAmount')
+  facility_amount=$(graphql_output '.data.creditFacility.facilityAmount.usdBalance')
   [[ "$facility_amount" == "$facility" ]] || exit 1
-
   additional_disbursal_amount=10000
   variables=$(
     jq -n \
