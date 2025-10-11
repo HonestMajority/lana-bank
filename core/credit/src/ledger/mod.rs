@@ -184,8 +184,7 @@ pub struct CreditLedger {
 impl CreditLedger {
     pub async fn init(cala: &CalaLedger, journal_id: JournalId) -> Result<Self, CreditLedgerError> {
         templates::AddCollateral::init(cala).await?;
-        templates::AddStructuringFee::init(cala).await?;
-        templates::RecognizeStructuringFee::init(cala).await?;
+        templates::RecordStructuringFee::init(cala).await?;
         templates::ActivateCreditFacility::init(cala).await?;
         templates::RemoveCollateral::init(cala).await?;
         templates::RecordPaymentAllocation::init(cala).await?;
@@ -1536,6 +1535,7 @@ impl CreditLedger {
             structuring_fee_amount,
         }: CreditFacilityActivation,
         disbursal_id: DisbursalId,
+        obligation: Obligation,
     ) -> Result<(), CreditLedgerError> {
         let mut op = self.cala.ledger_operation_from_db_op(op);
 
@@ -1551,12 +1551,20 @@ impl CreditLedger {
         self.activate_credit_facility(&mut op, tx_id, account_ids, facility_amount, tx_ref)
             .await?;
 
-        self.add_structuring_fee(
+        self.confirm_disbursal(
             &mut op,
             disbursal_id,
-            account_ids,
+            obligation,
+            account_ids.facility_account_id,
+        )
+        .await?;
+
+        self.record_structuring_fee(
+            &mut op,
+            disbursal_id,
             debit_account_id,
             structuring_fee_amount,
+            account_ids.fee_income_account_id,
         )
         .await?;
 
@@ -1604,8 +1612,7 @@ impl CreditLedger {
         .await?;
 
         if !structuring_fee_amount.is_zero() {
-            // The full disbursal has already been posted; only recognise the fee income.
-            self.recognize_structuring_fee(
+            self.record_structuring_fee(
                 &mut op,
                 disbursal_id,
                 debit_account_id,
@@ -1677,42 +1684,10 @@ impl CreditLedger {
         Ok(())
     }
 
-    /// Capitalise a structuring fee and recognise income when the fee has its own disbursal.
-    async fn add_structuring_fee(
-        &self,
-        op: &mut cala_ledger::LedgerOperation<'_>,
-        disbursal_id: DisbursalId,
-        account_ids: CreditFacilityLedgerAccountIds,
-        debit_account_id: CalaAccountId,
-        structuring_fee_amount: UsdCents,
-    ) -> Result<(), CreditLedgerError> {
-        let tx_id = disbursal_id.into();
-        self.cala
-            .post_transaction_in_op(
-                op,
-                tx_id,
-                templates::ADD_STRUCTURING_FEE_CODE,
-                templates::AddStructuringFeeParams {
-                    journal_id: self.journal_id,
-                    credit_omnibus_account: self.facility_omnibus_account_ids.account_id,
-                    credit_facility_account: account_ids.facility_account_id,
-                    facility_disbursed_receivable_account: account_ids
-                        .disbursed_receivable_not_yet_due_account_id,
-                    facility_fee_income_account: account_ids.fee_income_account_id,
-                    debit_account_id,
-                    structuring_fee_amount: structuring_fee_amount.to_usd(),
-                    currency: self.usd,
-                    external_id: format!("{}-structuring-fee", disbursal_id),
-                },
-            )
-            .await?;
-        Ok(())
-    }
-
-    /// Recognise the structuring fee without increasing the receivable balance.
+    /// Record the structuring fee by moving cash to fee income.
     ///
-    /// Use this when the structuring fee is financed inside a larger, already-ledgered disbursal.
-    async fn recognize_structuring_fee(
+    /// The disbursal drawdown must already have been posted.
+    async fn record_structuring_fee(
         &self,
         op: &mut cala_ledger::LedgerOperation<'_>,
         disbursal_id: DisbursalId,
@@ -1725,8 +1700,8 @@ impl CreditLedger {
             .post_transaction_in_op(
                 op,
                 tx_id,
-                templates::RECOGNIZE_STRUCTURING_FEE_CODE,
-                templates::RecognizeStructuringFeeParams {
+                templates::RECORD_STRUCTURING_FEE_CODE,
+                templates::RecordStructuringFeeParams {
                     journal_id: self.journal_id,
                     debit_account_id,
                     facility_fee_income_account: fee_income_account_id,

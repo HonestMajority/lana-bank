@@ -123,16 +123,13 @@ where
         &self,
         db: &mut es_entity::DbOpWithTime<'_>,
         credit_facility: &CreditFacility,
-    ) -> Result<DisbursalId, DisbursalError> {
-        let (disbursal_id, _) = self
-            .create_activation_disbursal_with_amount_in_op(
-                db,
-                credit_facility,
-                credit_facility.structuring_fee(),
-            )
-            .await?;
-
-        Ok(disbursal_id)
+    ) -> Result<(DisbursalId, Obligation), DisbursalError> {
+        self.create_activation_disbursal_with_amount_in_op(
+            db,
+            credit_facility,
+            credit_facility.structuring_fee(),
+        )
+        .await
     }
 
     #[instrument(

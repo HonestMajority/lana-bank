@@ -147,7 +147,7 @@ where
         let structuring_fee_amount = credit_facility.structuring_fee();
 
         if !structuring_fee_amount.is_zero() {
-            let disbursal_id = self
+            let (disbursal_id, obligation) = self
                 .disbursals
                 .create_initial_structure_fee_disbursal_in_op(&mut op, &credit_facility)
                 .await?;
@@ -157,6 +157,7 @@ where
                     op,
                     credit_facility.activation_data(),
                     disbursal_id,
+                    obligation,
                 )
                 .await?;
 
