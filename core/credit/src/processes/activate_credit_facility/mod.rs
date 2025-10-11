@@ -144,9 +144,7 @@ where
             return Ok(());
         }
 
-        let structuring_fee_amount = credit_facility.structuring_fee();
-
-        if !structuring_fee_amount.is_zero() {
+        if !credit_facility.structuring_fee().is_zero() {
             let (disbursal_id, obligation) = self
                 .disbursals
                 .create_initial_structure_fee_disbursal_in_op(&mut op, &credit_facility)

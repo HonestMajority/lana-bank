@@ -141,8 +141,12 @@ where
         db: &mut es_entity::DbOpWithTime<'_>,
         credit_facility: &CreditFacility,
     ) -> Result<(DisbursalId, Obligation), DisbursalError> {
-        self.create_activation_disbursal_with_amount_in_op(db, credit_facility, credit_facility.amount)
-            .await
+        self.create_activation_disbursal_with_amount_in_op(
+            db,
+            credit_facility,
+            credit_facility.amount,
+        )
+        .await
     }
 
     async fn create_activation_disbursal_with_amount_in_op(
