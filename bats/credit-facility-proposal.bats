@@ -219,14 +219,15 @@ ymd() {
   credit_facility_id=$(read_value 'credit_facility_id')
   retry 30 2 wait_for_accruals 4 "$credit_facility_id"
 
-  cat_logs | grep "interest accrual cycles completed for.*$credit_facility_id" || exit 1
-
   variables=$(
     jq -n \
       --arg creditFacilityId "$credit_facility_id" \
     '{ id: $creditFacilityId }'
   )
   exec_admin_graphql 'find-credit-facility' "$variables"
+  status=$(graphql_output '.data.creditFacility.status')
+  [[ "$status" == "MATURED" ]] || exit 1
+
   num_accruals=$(
     graphql_output '[
       .data.creditFacility.history[]
