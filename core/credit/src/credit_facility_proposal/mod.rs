@@ -2,6 +2,8 @@ mod entity;
 pub mod error;
 mod repo;
 
+use std::sync::Arc;
+
 use audit::AuditSvc;
 use authz::PermissionCheck;
 use core_price::Price;
@@ -10,7 +12,10 @@ use job::Jobs;
 use outbox::OutboxEventMarker;
 use tracing::instrument;
 
-use crate::{event::CoreCreditEvent, ledger::CreditLedger, primitives::*};
+use crate::{
+    credit_facility::NewCreditFacilityBuilder, event::CoreCreditEvent, ledger::CreditLedger,
+    primitives::*,
+};
 
 pub use entity::{CreditFacilityProposal, CreditFacilityProposalEvent, NewCreditFacilityProposal};
 use error::*;
@@ -19,7 +24,7 @@ pub use repo::credit_facility_proposal_cursor::*;
 
 pub enum CreditFacilityProposalCompletionOutcome {
     Ignored,
-    Completed(CreditFacilityProposal),
+    Completed(NewCreditFacilityBuilder),
 }
 
 pub struct CreditFacilityProposals<Perms, E>
@@ -27,12 +32,12 @@ where
     Perms: PermissionCheck,
     E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
 {
-    repo: CreditFacilityProposalRepo<E>,
-    authz: Perms,
-    jobs: Jobs,
-    price: Price,
-    ledger: CreditLedger,
-    governance: Governance<Perms, E>,
+    repo: Arc<CreditFacilityProposalRepo<E>>,
+    authz: Arc<Perms>,
+    jobs: Arc<Jobs>,
+    price: Arc<Price>,
+    ledger: Arc<CreditLedger>,
+    governance: Arc<Governance<Perms, E>>,
 }
 impl<Perms, E> Clone for CreditFacilityProposals<Perms, E>
 where
@@ -62,12 +67,12 @@ where
 {
     pub async fn init(
         pool: &sqlx::PgPool,
-        authz: &Perms,
-        jobs: &Jobs,
-        ledger: &CreditLedger,
-        price: &Price,
+        authz: Arc<Perms>,
+        jobs: Arc<Jobs>,
+        ledger: Arc<CreditLedger>,
+        price: Arc<Price>,
         publisher: &crate::CreditFacilityPublisher<E>,
-        governance: &Governance<Perms, E>,
+        governance: Arc<Governance<Perms, E>>,
     ) -> Result<Self, CreditFacilityProposalError> {
         let repo = CreditFacilityProposalRepo::new(pool, publisher);
         match governance
@@ -82,12 +87,12 @@ where
         }
 
         Ok(Self {
-            repo,
-            ledger: ledger.clone(),
-            jobs: jobs.clone(),
-            authz: authz.clone(),
-            price: price.clone(),
-            governance: governance.clone(),
+            repo: Arc::new(repo),
+            ledger,
+            jobs,
+            authz,
+            price,
+            governance,
         })
     }
 
@@ -165,13 +170,21 @@ where
             .get_credit_facility_proposal_balance(proposal.account_ids)
             .await?;
 
-        let Ok(es_entity::Idempotent::Executed(_)) = proposal.complete(balances, price) else {
-            return Ok(CreditFacilityProposalCompletionOutcome::Ignored);
-        };
+        match proposal.complete(balances, price, crate::time::now()) {
+            Ok(es_entity::Idempotent::Executed(new_facility)) => {
+                self.repo.update_in_op(db, &mut proposal).await?;
 
-        self.repo.update_in_op(db, &mut proposal).await?;
-
-        Ok(CreditFacilityProposalCompletionOutcome::Completed(proposal))
+                Ok(CreditFacilityProposalCompletionOutcome::Completed(
+                    new_facility,
+                ))
+            }
+            Ok(es_entity::Idempotent::Ignored)
+            | Err(CreditFacilityProposalError::BelowMarginLimit)
+            | Err(CreditFacilityProposalError::ApprovalInProgress) => {
+                Ok(CreditFacilityProposalCompletionOutcome::Ignored)
+            }
+            Err(e) => Err(e),
+        }
     }
 
     #[es_entity::retry_on_concurrent_modification]
