@@ -3753,6 +3753,7 @@ dependencies = [
  "core-credit",
  "core-custody",
  "core-customer",
+ "core-deposit",
  "core-money",
  "es-entity",
  "futures",
@@ -3760,11 +3761,12 @@ dependencies = [
  "handlebars",
  "job",
  "lana-events",
- "lettre",
  "outbox",
  "serde",
  "serde_json",
+ "smtp-client",
  "thiserror 2.0.17",
+ "tracing",
  "workspace-hack",
 ]
 
@@ -5600,6 +5602,16 @@ dependencies = [
  "serde",
  "static_assertions",
  "version_check",
+]
+
+[[package]]
+name = "smtp-client"
+version = "0.0.0"
+dependencies = [
+ "lettre",
+ "serde",
+ "thiserror 2.0.17",
+ "workspace-hack",
 ]
 
 [[package]]
