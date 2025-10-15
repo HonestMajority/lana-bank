@@ -4,20 +4,14 @@ use derive_builder::Builder;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
+use core_custody::CustodianId;
 use es_entity::*;
 
 use crate::{
-    credit_facility::NewCreditFacilityBuilder,
-    disbursal::NewDisbursalBuilder,
-    ledger::{
-        CreditFacilityProposalAccountIds, CreditFacilityProposalBalanceSummary,
-        CreditFacilityProposalCreation,
-    },
+    pending_credit_facility::{NewPendingCreditFacility, NewPendingCreditFacilityBuilder},
     primitives::*,
     terms::TermValues,
 };
-
-use super::error::CreditFacilityProposalError;
 
 #[derive(EsEvent, Debug, Clone, Serialize, Deserialize)]
 #[cfg_attr(feature = "json-schema", derive(JsonSchema))]
@@ -26,42 +20,30 @@ use super::error::CreditFacilityProposalError;
 pub enum CreditFacilityProposalEvent {
     Initialized {
         id: CreditFacilityProposalId,
-        ledger_tx_id: LedgerTxId,
         customer_id: CustomerId,
         customer_type: CustomerType,
-        collateral_id: CollateralId,
+        custodian_id: Option<CustodianId>,
+        approval_process_id: ApprovalProcessId,
+        disbursal_credit_account_id: CalaAccountId,
         terms: TermValues,
         amount: UsdCents,
-        account_ids: CreditFacilityProposalAccountIds,
-        disbursal_credit_account_id: CalaAccountId,
-        approval_process_id: ApprovalProcessId,
+        status: CreditFacilityProposalStatus,
     },
     ApprovalProcessConcluded {
         approval_process_id: ApprovalProcessId,
-        approved: bool,
+        status: CreditFacilityProposalStatus,
     },
-    CollateralizationStateChanged {
-        collateralization_state: CreditFacilityProposalCollateralizationState,
-        collateral: Satoshis,
-        price: PriceOfOneBTC,
-    },
-    CollateralizationRatioChanged {
-        collateralization_ratio: CollateralizationRatio,
-    },
-    Completed {},
 }
 
 #[derive(EsEntity, Builder)]
 #[builder(pattern = "owned", build_fn(error = "EsEntityError"))]
 pub struct CreditFacilityProposal {
     pub id: CreditFacilityProposalId,
-    pub ledger_tx_id: LedgerTxId,
-    pub approval_process_id: ApprovalProcessId,
-    pub account_ids: CreditFacilityProposalAccountIds,
-    pub disbursal_credit_account_id: CalaAccountId,
     pub customer_id: CustomerId,
     pub customer_type: CustomerType,
-    pub collateral_id: CollateralId,
+    pub custodian_id: Option<CustodianId>,
+    pub approval_process_id: ApprovalProcessId,
+    pub disbursal_credit_account_id: CalaAccountId,
     pub amount: UsdCents,
     pub terms: TermValues,
 
@@ -69,223 +51,74 @@ pub struct CreditFacilityProposal {
 }
 
 impl CreditFacilityProposal {
-    pub fn creation_data(&self) -> CreditFacilityProposalCreation {
-        match self.events.iter_all().next() {
-            Some(CreditFacilityProposalEvent::Initialized {
-                ledger_tx_id,
-                account_ids,
-                amount,
-                ..
-            }) => CreditFacilityProposalCreation {
-                tx_id: *ledger_tx_id,
-                tx_ref: format!("{}-create", self.id),
-                credit_facility_proposal_account_ids: *account_ids,
-                facility_amount: *amount,
-            },
-            _ => unreachable!("Initialized event must be the first event"),
-        }
-    }
-
     pub fn created_at(&self) -> DateTime<Utc> {
         self.events
             .entity_first_persisted_at()
             .expect("entity_first_persisted_at not found")
     }
 
-    pub fn status(&self) -> CreditFacilityProposalStatus {
-        if self.is_completed() {
-            CreditFacilityProposalStatus::Completed
-        } else if !matches!(
-            self.last_collateralization_state(),
-            CreditFacilityProposalCollateralizationState::FullyCollateralized
-        ) {
-            CreditFacilityProposalStatus::PendingCollateralization
-        } else if !self.is_approval_process_concluded() {
-            CreditFacilityProposalStatus::PendingApproval
-        } else {
-            CreditFacilityProposalStatus::PendingCompletion
-        }
-    }
-
-    pub(crate) fn update_collateralization(
-        &mut self,
-        price: PriceOfOneBTC,
-        balances: CreditFacilityProposalBalanceSummary,
-    ) -> Idempotent<Option<CreditFacilityProposalCollateralizationState>> {
-        if self.is_completed() {
-            return Idempotent::Ignored;
-        }
-
-        let ratio_changed = self.update_collateralization_ratio(&balances).did_execute();
-
-        let is_fully_collateralized =
-            balances.facility_amount_cvl(price) >= self.terms.margin_call_cvl;
-
-        let calculated_collateralization_state = if is_fully_collateralized {
-            CreditFacilityProposalCollateralizationState::FullyCollateralized
-        } else {
-            CreditFacilityProposalCollateralizationState::UnderCollateralized
-        };
-
-        if calculated_collateralization_state != self.last_collateralization_state() {
-            self.events
-                .push(CreditFacilityProposalEvent::CollateralizationStateChanged {
-                    collateralization_state: calculated_collateralization_state,
-                    collateral: balances.collateral(),
-                    price,
-                });
-            Idempotent::Executed(Some(calculated_collateralization_state))
-        } else if ratio_changed {
-            Idempotent::Executed(None)
-        } else {
-            Idempotent::Ignored
-        }
-    }
-
-    fn update_collateralization_ratio(
-        &mut self,
-        balance: &CreditFacilityProposalBalanceSummary,
-    ) -> Idempotent<()> {
-        let ratio = balance.current_collateralization_ratio();
-
-        if self.last_collateralization_ratio() == ratio {
-            return Idempotent::Ignored;
-        }
-
-        self.events
-            .push(CreditFacilityProposalEvent::CollateralizationRatioChanged {
-                collateralization_ratio: ratio,
-            });
-        Idempotent::Executed(())
-    }
-
-    pub fn last_collateralization_ratio(&self) -> CollateralizationRatio {
-        self.events
-            .iter_all()
-            .rev()
-            .find_map(|event| match event {
-                CreditFacilityProposalEvent::CollateralizationRatioChanged {
-                    collateralization_ratio: ratio,
-                    ..
-                } => Some(*ratio),
-                _ => None,
-            })
-            .unwrap_or(CollateralizationRatio::default())
-    }
-
-    pub fn last_collateralization_state(&self) -> CreditFacilityProposalCollateralizationState {
-        self.events
-            .iter_all()
-            .rev()
-            .find_map(|event| match event {
-                CreditFacilityProposalEvent::CollateralizationStateChanged {
-                    collateralization_state,
-                    ..
-                } => Some(*collateralization_state),
-                _ => None,
-            })
-            .unwrap_or(CreditFacilityProposalCollateralizationState::UnderCollateralized)
-    }
-
-    pub(crate) fn is_approval_process_concluded(&self) -> bool {
-        self.events.iter_all().any(|event| {
+    pub fn is_approval_process_concluded(&self) -> bool {
+        self.events.iter_all().any(|e| {
             matches!(
-                event,
+                e,
                 CreditFacilityProposalEvent::ApprovalProcessConcluded { .. }
             )
         })
     }
 
-    pub(crate) fn approval_process_concluded(&mut self, approved: bool) -> Idempotent<()> {
+    pub(super) fn conclude_approval_process(
+        &mut self,
+        approved: bool,
+    ) -> Idempotent<Option<(NewPendingCreditFacility, Option<CustodianId>)>> {
         idempotency_guard!(
             self.events.iter_all(),
             CreditFacilityProposalEvent::ApprovalProcessConcluded { .. }
         );
+
+        let status = if approved {
+            CreditFacilityProposalStatus::Approved
+        } else {
+            CreditFacilityProposalStatus::Denied
+        };
+
         self.events
             .push(CreditFacilityProposalEvent::ApprovalProcessConcluded {
                 approval_process_id: self.id.into(),
-                approved,
+                status,
             });
-        Idempotent::Executed(())
-    }
 
-    pub(super) fn complete(
-        &mut self,
-        balances: CreditFacilityProposalBalanceSummary,
-        price: PriceOfOneBTC,
-        time: DateTime<Utc>,
-    ) -> Result<
-        Idempotent<(NewCreditFacilityBuilder, Option<NewDisbursalBuilder>)>,
-        CreditFacilityProposalError,
-    > {
-        idempotency_guard!(
-            self.events.iter_all(),
-            CreditFacilityProposalEvent::Completed { .. }
-        );
-
-        if !self.is_approval_process_concluded() {
-            return Err(CreditFacilityProposalError::ApprovalInProgress);
-        }
-
-        if !self.terms.is_proposal_completion_allowed(balances, price) {
-            return Err(CreditFacilityProposalError::BelowMarginLimit);
-        }
-
-        self.events.push(CreditFacilityProposalEvent::Completed {});
-
-        let mut new_credit_facility = NewCreditFacilityBuilder::default();
-        let maturity_date = self.terms.maturity_date(time);
-        let account_ids = crate::CreditFacilityLedgerAccountIds::from(self.account_ids);
-        new_credit_facility
-            .id(self.id)
-            .credit_facility_proposal_id(self.id)
-            .ledger_tx_id(LedgerTxId::new())
-            .customer_id(self.customer_id)
-            .customer_type(self.customer_type)
-            .account_ids(account_ids)
-            .disbursal_credit_account_id(self.disbursal_credit_account_id)
-            .collateral_id(self.collateral_id)
-            .terms(self.terms)
-            .amount(self.amount)
-            .activated_at(crate::time::now())
-            .maturity_date(maturity_date);
-
-        let initial_disbursal = if self.structuring_fee().is_zero() {
-            None
-        } else {
-            let due_date = maturity_date;
-            let overdue_date = self.terms.get_overdue_date_from_due_date(due_date);
-            let liquidation_date = self.terms.get_liquidation_date_from_due_date(due_date);
-
-            let mut new_disbursal_builder = NewDisbursalBuilder::default();
-            new_disbursal_builder
-                .id(DisbursalId::new())
-                .credit_facility_id(self.id)
+        if approved {
+            let new_pending_facility = NewPendingCreditFacilityBuilder::default()
+                .id(self.id)
+                .credit_facility_proposal_id(self.id)
+                .customer_id(self.customer_id)
+                .customer_type(self.customer_type)
                 .approval_process_id(self.approval_process_id)
-                .amount(self.structuring_fee())
-                .account_ids(account_ids)
+                .ledger_tx_id(LedgerTxId::new())
+                .account_ids(crate::PendingCreditFacilityAccountIds::new())
                 .disbursal_credit_account_id(self.disbursal_credit_account_id)
-                .due_date(due_date)
-                .overdue_date(overdue_date)
-                .liquidation_date(liquidation_date);
+                .collateral_id(CollateralId::new())
+                .terms(self.terms)
+                .amount(self.amount)
+                .build()
+                .expect("Could not build new pending credit facility");
 
-            Some(new_disbursal_builder)
-        };
+            return Idempotent::Executed(Some((new_pending_facility, self.custodian_id)));
+        }
 
-        Ok(Idempotent::Executed((
-            new_credit_facility,
-            initial_disbursal,
-        )))
+        Idempotent::Executed(None)
     }
 
-    fn is_completed(&self) -> bool {
+    pub fn status(&self) -> CreditFacilityProposalStatus {
         self.events
             .iter_all()
-            .any(|event| matches!(event, CreditFacilityProposalEvent::Completed { .. }))
-    }
-
-    fn structuring_fee(&self) -> UsdCents {
-        self.terms.one_time_fee_rate.apply(self.amount)
+            .rev()
+            .map(|event| match event {
+                CreditFacilityProposalEvent::ApprovalProcessConcluded { status, .. } => *status,
+                CreditFacilityProposalEvent::Initialized { status, .. } => *status,
+            })
+            .next()
+            .expect("status should always exist")
     }
 }
 
@@ -298,33 +131,26 @@ impl TryFromEvents<CreditFacilityProposalEvent> for CreditFacilityProposal {
             match event {
                 CreditFacilityProposalEvent::Initialized {
                     id,
-                    ledger_tx_id,
                     customer_id,
                     customer_type,
-                    collateral_id,
-                    amount,
+                    custodian_id,
                     approval_process_id,
-                    account_ids,
                     disbursal_credit_account_id,
                     terms,
+                    amount,
                     ..
                 } => {
                     builder = builder
                         .id(*id)
                         .customer_id(*customer_id)
                         .customer_type(*customer_type)
-                        .ledger_tx_id(*ledger_tx_id)
-                        .collateral_id(*collateral_id)
-                        .amount(*amount)
-                        .terms(*terms)
-                        .account_ids(*account_ids)
+                        .custodian_id(*custodian_id)
+                        .approval_process_id(*approval_process_id)
                         .disbursal_credit_account_id(*disbursal_credit_account_id)
-                        .approval_process_id(*approval_process_id);
+                        .terms(*terms)
+                        .amount(*amount);
                 }
                 CreditFacilityProposalEvent::ApprovalProcessConcluded { .. } => {}
-                CreditFacilityProposalEvent::CollateralizationStateChanged { .. } => {}
-                CreditFacilityProposalEvent::CollateralizationRatioChanged { .. } => {}
-                CreditFacilityProposalEvent::Completed { .. } => {}
             }
         }
         builder.events(events).build()
@@ -336,18 +162,14 @@ pub struct NewCreditFacilityProposal {
     #[builder(setter(into))]
     pub(super) id: CreditFacilityProposalId,
     #[builder(setter(into))]
-    pub(super) ledger_tx_id: LedgerTxId,
+    pub(super) customer_id: CustomerId,
+    pub(super) customer_type: CustomerType,
+    #[builder(setter(into), default)]
+    pub(super) custodian_id: Option<CustodianId>,
     #[builder(setter(into))]
     pub(super) approval_process_id: ApprovalProcessId,
     #[builder(setter(into))]
-    pub(super) customer_id: CustomerId,
-    pub(super) customer_type: CustomerType,
-    #[builder(setter(into))]
-    pub(super) collateral_id: CollateralId,
-    #[builder(setter(skip), default)]
-    pub(super) collateralization_state: CreditFacilityProposalCollateralizationState,
-    account_ids: CreditFacilityProposalAccountIds,
-    disbursal_credit_account_id: CalaAccountId,
+    pub(super) disbursal_credit_account_id: CalaAccountId,
     terms: TermValues,
     amount: UsdCents,
 }
@@ -364,169 +186,15 @@ impl IntoEvents<CreditFacilityProposalEvent> for NewCreditFacilityProposal {
             self.id,
             [CreditFacilityProposalEvent::Initialized {
                 id: self.id,
-                ledger_tx_id: self.ledger_tx_id,
                 customer_id: self.customer_id,
                 customer_type: self.customer_type,
-                collateral_id: self.collateral_id,
+                custodian_id: self.custodian_id,
+                approval_process_id: self.approval_process_id,
+                disbursal_credit_account_id: self.disbursal_credit_account_id,
                 terms: self.terms,
                 amount: self.amount,
-                account_ids: self.account_ids,
-                disbursal_credit_account_id: self.disbursal_credit_account_id,
-                approval_process_id: self.approval_process_id,
+                status: CreditFacilityProposalStatus::PendingApproval,
             }],
         )
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use rust_decimal_macros::dec;
-
-    use crate::{
-        ObligationDuration,
-        terms::{FacilityDuration, InterestInterval, OneTimeFeeRatePct},
-    };
-
-    use super::*;
-    fn default_terms() -> TermValues {
-        TermValues::builder()
-            .annual_rate(dec!(12))
-            .duration(FacilityDuration::Months(3))
-            .interest_due_duration_from_accrual(ObligationDuration::Days(0))
-            .obligation_overdue_duration_from_due(None)
-            .obligation_liquidation_duration_from_due(None)
-            .accrual_cycle_interval(InterestInterval::EndOfMonth)
-            .accrual_interval(InterestInterval::EndOfDay)
-            .one_time_fee_rate(OneTimeFeeRatePct::new(5))
-            .liquidation_cvl(dec!(105))
-            .margin_call_cvl(dec!(125))
-            .initial_cvl(dec!(140))
-            .build()
-            .expect("should build a valid term")
-    }
-
-    fn default_facility() -> UsdCents {
-        UsdCents::from(10_00)
-    }
-
-    fn default_price() -> PriceOfOneBTC {
-        PriceOfOneBTC::new(UsdCents::try_from_usd(dec!(100_000)).unwrap())
-    }
-
-    fn default_balances() -> CreditFacilityProposalBalanceSummary {
-        CreditFacilityProposalBalanceSummary::new(default_facility(), Satoshis::ZERO)
-    }
-
-    fn initial_events() -> Vec<CreditFacilityProposalEvent> {
-        vec![CreditFacilityProposalEvent::Initialized {
-            id: CreditFacilityProposalId::new(),
-            ledger_tx_id: LedgerTxId::new(),
-            customer_id: CustomerId::new(),
-            customer_type: CustomerType::Individual,
-            collateral_id: CollateralId::new(),
-            amount: default_facility(),
-            terms: default_terms(),
-            account_ids: CreditFacilityProposalAccountIds::new(),
-            disbursal_credit_account_id: CalaAccountId::new(),
-            approval_process_id: ApprovalProcessId::new(),
-        }]
-    }
-
-    fn proposal_from(events: Vec<CreditFacilityProposalEvent>) -> CreditFacilityProposal {
-        CreditFacilityProposal::try_from_events(EntityEvents::init(
-            CreditFacilityProposalId::new(),
-            events,
-        ))
-        .unwrap()
-    }
-
-    mod complete {
-        use super::*;
-        #[test]
-        fn errors_when_not_approved_yet() {
-            let mut facility_proposal = proposal_from(initial_events());
-            assert!(matches!(
-                facility_proposal.complete(default_balances(), default_price(), crate::time::now()),
-                Err(CreditFacilityProposalError::ApprovalInProgress)
-            ));
-        }
-
-        #[test]
-        fn errors_if_no_collateral() {
-            let mut events = initial_events();
-            events.extend([CreditFacilityProposalEvent::ApprovalProcessConcluded {
-                approval_process_id: ApprovalProcessId::new(),
-                approved: true,
-            }]);
-            let mut facility_proposal = proposal_from(events);
-
-            assert!(matches!(
-                facility_proposal.complete(default_balances(), default_price(), crate::time::now()),
-                Err(CreditFacilityProposalError::BelowMarginLimit)
-            ));
-        }
-
-        #[test]
-        fn errors_if_collateral_below_margin() {
-            let mut events = initial_events();
-            events.extend([CreditFacilityProposalEvent::ApprovalProcessConcluded {
-                approval_process_id: ApprovalProcessId::new(),
-                approved: true,
-            }]);
-            let mut facility_proposal = proposal_from(events);
-
-            assert!(matches!(
-                facility_proposal.complete(
-                    CreditFacilityProposalBalanceSummary::new(
-                        default_facility(),
-                        Satoshis::from(1_000)
-                    ),
-                    default_price(),
-                    crate::time::now()
-                ),
-                Err(CreditFacilityProposalError::BelowMarginLimit)
-            ));
-        }
-
-        #[test]
-        fn ignored_if_already_completed() {
-            let mut events = initial_events();
-            events.extend([
-                CreditFacilityProposalEvent::ApprovalProcessConcluded {
-                    approval_process_id: ApprovalProcessId::new(),
-                    approved: true,
-                },
-                CreditFacilityProposalEvent::Completed {},
-            ]);
-            let mut facility_proposal = proposal_from(events);
-
-            assert!(matches!(
-                facility_proposal.complete(default_balances(), default_price(), crate::time::now()),
-                Ok(Idempotent::Ignored)
-            ));
-        }
-
-        #[test]
-        fn can_activate() {
-            let mut events = initial_events();
-            events.extend([CreditFacilityProposalEvent::ApprovalProcessConcluded {
-                approval_process_id: ApprovalProcessId::new(),
-                approved: true,
-            }]);
-            let mut facility_proposal = proposal_from(events);
-
-            assert!(
-                facility_proposal
-                    .complete(
-                        CreditFacilityProposalBalanceSummary::new(
-                            default_facility(),
-                            Satoshis::from(1_000_000)
-                        ),
-                        default_price(),
-                        crate::time::now()
-                    )
-                    .is_ok()
-            );
-        }
     }
 }

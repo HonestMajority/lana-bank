@@ -7,51 +7,59 @@ use governance::{GovernanceAction, GovernanceEvent, GovernanceObject};
 use job::*;
 use outbox::{EventSequence, Outbox, OutboxEventMarker};
 
+use core_custody::{CoreCustodyAction, CoreCustodyEvent, CoreCustodyObject};
+
 use crate::{
-    credit_facility_proposal::CreditFacilityProposals, event::CoreCreditEvent, primitives::*,
+    event::CoreCreditEvent, pending_credit_facility::PendingCreditFacilities, primitives::*,
 };
 
 #[derive(Serialize, Deserialize)]
-pub struct CreditFacilityProposalCollateralizationFromEventsJobConfig<Perms, E> {
+pub struct PendingCreditFacilityCollateralizationFromEventsJobConfig<Perms, E> {
     pub _phantom: std::marker::PhantomData<(Perms, E)>,
 }
-impl<Perms, E> JobConfig for CreditFacilityProposalCollateralizationFromEventsJobConfig<Perms, E>
+impl<Perms, E> JobConfig for PendingCreditFacilityCollateralizationFromEventsJobConfig<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
-    type Initializer = CreditFacilityProposalCollateralizationFromEventsInit<Perms, E>;
+    type Initializer = PendingCreditFacilityCollateralizationFromEventsInit<Perms, E>;
 }
 
-pub struct CreditFacilityProposalCollateralizationFromEventsInit<Perms, E>
+pub struct PendingCreditFacilityCollateralizationFromEventsInit<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     outbox: Outbox<E>,
-    credit_facility_proposals: CreditFacilityProposals<Perms, E>,
+    credit_facility_proposals: PendingCreditFacilities<Perms, E>,
 }
 
-impl<Perms, E> CreditFacilityProposalCollateralizationFromEventsInit<Perms, E>
+impl<Perms, E> PendingCreditFacilityCollateralizationFromEventsInit<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     pub fn new(
         outbox: &Outbox<E>,
-        credit_facility_proposals: &CreditFacilityProposals<Perms, E>,
+        credit_facility_proposals: &PendingCreditFacilities<Perms, E>,
     ) -> Self {
         Self {
             outbox: outbox.clone(),
@@ -62,14 +70,16 @@ where
 
 const CREDIT_FACILITY_PROPOSAL_COLLATERALIZATION_FROM_EVENTS_JOB: JobType =
     JobType::new("credit-facility-proposal-collateralization-from-events");
-impl<Perms, E> JobInitializer for CreditFacilityProposalCollateralizationFromEventsInit<Perms, E>
+impl<Perms, E> JobInitializer for PendingCreditFacilityCollateralizationFromEventsInit<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     fn job_type() -> JobType
     where
@@ -80,9 +90,9 @@ where
 
     fn init(&self, _job: &Job) -> Result<Box<dyn JobRunner>, Box<dyn std::error::Error>> {
         Ok(Box::new(
-            CreditFacilityProposalCollateralizationFromEventsRunner::<Perms, E> {
+            PendingCreditFacilityCollateralizationFromEventsRunner::<Perms, E> {
                 outbox: self.outbox.clone(),
-                credit_facility_proposals: self.credit_facility_proposals.clone(),
+                pending_credit_facility: self.credit_facility_proposals.clone(),
             },
         ))
     }
@@ -91,45 +101,49 @@ where
 // TODO: reproduce 'collateralization_ratio' test from old credit facility
 
 #[derive(Default, Clone, Copy, serde::Deserialize, serde::Serialize)]
-struct CreditFacilityProposalCollateralizationFromEventsData {
+struct PendingCreditFacilityCollateralizationFromEventsData {
     sequence: EventSequence,
 }
 
-pub struct CreditFacilityProposalCollateralizationFromEventsRunner<Perms, E>
+pub struct PendingCreditFacilityCollateralizationFromEventsRunner<Perms, E>
 where
     Perms: PermissionCheck,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     outbox: Outbox<E>,
-    credit_facility_proposals: CreditFacilityProposals<Perms, E>,
+    pending_credit_facility: PendingCreditFacilities<Perms, E>,
 }
 
 #[async_trait::async_trait]
-impl<Perms, E> JobRunner for CreditFacilityProposalCollateralizationFromEventsRunner<Perms, E>
+impl<Perms, E> JobRunner for PendingCreditFacilityCollateralizationFromEventsRunner<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     async fn run(
         &self,
         mut current_job: CurrentJob,
     ) -> Result<JobCompletion, Box<dyn std::error::Error>> {
         let mut state = current_job
-            .execution_state::<CreditFacilityProposalCollateralizationFromEventsData>()?
+            .execution_state::<PendingCreditFacilityCollateralizationFromEventsData>()?
             .unwrap_or_default();
         let mut stream = self.outbox.listen_persisted(Some(state.sequence)).await?;
 
         while let Some(message) = stream.next().await {
             if let Some(CoreCreditEvent::FacilityCollateralUpdated {
-                credit_facility_proposal_id: id,
+                pending_credit_facility_id: id,
                 ..
             }) = message.as_ref().as_event()
             {
-                self.credit_facility_proposals
+                self.pending_credit_facility
                     .update_collateralization_from_events(*id)
                     .await?;
                 state.sequence = message.sequence;

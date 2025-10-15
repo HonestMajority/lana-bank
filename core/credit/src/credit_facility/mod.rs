@@ -15,15 +15,17 @@ use outbox::OutboxEventMarker;
 
 use crate::{
     PublicIds,
-    credit_facility_proposal::{CreditFacilityProposalCompletionOutcome, CreditFacilityProposals},
     disbursal::Disbursals,
     event::CoreCreditEvent,
     jobs::{credit_facility_maturity, interest_accruals},
     ledger::{CreditFacilityInterestAccrual, CreditFacilityInterestAccrualCycle, CreditLedger},
     obligation::Obligations,
+    pending_credit_facility::{PendingCreditFacilities, PendingCreditFacilityCompletionOutcome},
     primitives::*,
     terms::InterestPeriod,
 };
+
+use core_custody::{CoreCustodyAction, CoreCustodyEvent, CoreCustodyObject};
 
 pub use entity::CreditFacility;
 pub(crate) use entity::*;
@@ -40,11 +42,13 @@ pub use repo::{
 pub struct CreditFacilities<Perms, E>
 where
     Perms: PermissionCheck,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
+    pending_credit_facilities: Arc<PendingCreditFacilities<Perms, E>>,
     repo: Arc<CreditFacilityRepo<E>>,
     obligations: Arc<Obligations<Perms, E>>,
-    proposals: Arc<CreditFacilityProposals<Perms, E>>,
     disbursals: Arc<Disbursals<Perms, E>>,
     authz: Arc<Perms>,
     ledger: Arc<CreditLedger>,
@@ -57,13 +61,15 @@ where
 impl<Perms, E> Clone for CreditFacilities<Perms, E>
 where
     Perms: PermissionCheck,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     fn clone(&self) -> Self {
         Self {
             repo: self.repo.clone(),
             obligations: self.obligations.clone(),
-            proposals: self.proposals.clone(),
+            pending_credit_facilities: self.pending_credit_facilities.clone(),
             disbursals: self.disbursals.clone(),
             authz: self.authz.clone(),
             ledger: self.ledger.clone(),
@@ -92,16 +98,18 @@ impl<Perms, E> CreditFacilities<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<CoreCreditEvent> + OutboxEventMarker<GovernanceEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     pub fn new(
         pool: &sqlx::PgPool,
         authz: Arc<Perms>,
         obligations: Arc<Obligations<Perms, E>>,
-        proposals: Arc<CreditFacilityProposals<Perms, E>>,
+        pending_credit_facilities: Arc<PendingCreditFacilities<Perms, E>>,
         disbursals: Arc<Disbursals<Perms, E>>,
         ledger: Arc<CreditLedger>,
         price: Arc<Price>,
@@ -115,7 +123,7 @@ where
         Self {
             repo: Arc::new(repo),
             obligations,
-            proposals,
+            pending_credit_facilities,
             disbursals,
             authz,
             ledger,
@@ -143,17 +151,19 @@ where
             )
             .await?;
 
-        let (mut new_credit_facility_builder, initial_disbursal) =
-            match self.proposals.complete_in_op(&mut db, id.into()).await? {
-                CreditFacilityProposalCompletionOutcome::Completed {
-                    new_facility: new_credit_facility_builder,
-                    initial_disbursal,
-                } => (new_credit_facility_builder, initial_disbursal),
-                CreditFacilityProposalCompletionOutcome::Ignored => {
-                    return Ok(());
-                }
-            };
-
+        let (mut new_credit_facility_builder, initial_disbursal) = match self
+            .pending_credit_facilities
+            .complete_in_op(&mut db, id.into())
+            .await?
+        {
+            PendingCreditFacilityCompletionOutcome::Completed {
+                new_facility: new_credit_facility_builder,
+                initial_disbursal,
+            } => (new_credit_facility_builder, initial_disbursal),
+            PendingCreditFacilityCompletionOutcome::Ignored => {
+                return Ok(());
+            }
+        };
         let public_id = self
             .public_ids
             .create_in_op(&mut db, CREDIT_FACILITY_REF_TARGET, id)

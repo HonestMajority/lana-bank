@@ -14,8 +14,11 @@ use outbox::OutboxEventMarker;
 
 use crate::{
     CoreCreditAction, CoreCreditEvent, CoreCreditObject, CreditFacilityProposal,
-    CreditFacilityProposalId, CreditFacilityProposals, error::CoreCreditError,
+    CreditFacilityProposalId, CreditFacilityProposals, PendingCreditFacilities,
+    error::CoreCreditError,
 };
+
+use core_custody::{CoreCustodyAction, CoreCustodyEvent, CoreCustodyObject};
 
 pub use job::*;
 pub const APPROVE_CREDIT_FACILITY_PROPOSAL_PROCESS: ApprovalProcessType =
@@ -24,9 +27,12 @@ pub const APPROVE_CREDIT_FACILITY_PROPOSAL_PROCESS: ApprovalProcessType =
 pub struct ApproveCreditFacilityProposal<Perms, E>
 where
     Perms: PermissionCheck,
-    E: OutboxEventMarker<GovernanceEvent> + OutboxEventMarker<CoreCreditEvent>,
+    E: OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
-    credit_facility_proposals: Arc<CreditFacilityProposals<Perms, E>>,
+    proposals: Arc<CreditFacilityProposals<Perms, E>>,
+    pending_credit_facilities: Arc<PendingCreditFacilities<Perms, E>>,
     audit: Arc<Perms::Audit>,
     governance: Arc<Governance<Perms, E>>,
 }
@@ -34,11 +40,14 @@ where
 impl<Perms, E> Clone for ApproveCreditFacilityProposal<Perms, E>
 where
     Perms: PermissionCheck,
-    E: OutboxEventMarker<GovernanceEvent> + OutboxEventMarker<CoreCreditEvent>,
+    E: OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     fn clone(&self) -> Self {
         Self {
-            credit_facility_proposals: self.credit_facility_proposals.clone(),
+            proposals: self.proposals.clone(),
+            pending_credit_facilities: self.pending_credit_facilities.clone(),
             audit: self.audit.clone(),
             governance: self.governance.clone(),
         }
@@ -49,18 +58,22 @@ impl<Perms, E> ApproveCreditFacilityProposal<Perms, E>
 where
     Perms: PermissionCheck,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Action:
-        From<CoreCreditAction> + From<GovernanceAction>,
+        From<CoreCreditAction> + From<GovernanceAction> + From<CoreCustodyAction>,
     <<Perms as PermissionCheck>::Audit as AuditSvc>::Object:
-        From<CoreCreditObject> + From<GovernanceObject>,
-    E: OutboxEventMarker<GovernanceEvent> + OutboxEventMarker<CoreCreditEvent>,
+        From<CoreCreditObject> + From<GovernanceObject> + From<CoreCustodyObject>,
+    E: OutboxEventMarker<GovernanceEvent>
+        + OutboxEventMarker<CoreCreditEvent>
+        + OutboxEventMarker<CoreCustodyEvent>,
 {
     pub fn new(
-        repo: Arc<CreditFacilityProposals<Perms, E>>,
+        proposals: Arc<CreditFacilityProposals<Perms, E>>,
+        pending_credit_facilities: Arc<PendingCreditFacilities<Perms, E>>,
         audit: Arc<Perms::Audit>,
         governance: Arc<Governance<Perms, E>>,
     ) -> Self {
         Self {
-            credit_facility_proposals: repo,
+            proposals,
+            pending_credit_facilities,
             audit,
             governance,
         }
@@ -83,26 +96,29 @@ where
 
         let res = match process.status() {
             ApprovalProcessStatus::Approved => {
-                Some(self.execute(credit_facility_proposal.id, true).await?)
+                self.execute(credit_facility_proposal.id, true).await?
             }
             ApprovalProcessStatus::Denied => {
-                Some(self.execute(credit_facility_proposal.id, false).await?)
+                self.execute(credit_facility_proposal.id, false).await?
             }
             _ => None,
         };
+
         Ok(res)
     }
 
+    #[es_entity::retry_on_concurrent_modification(any_error = true)]
     #[instrument(name = "credit_facility.approval.execute", skip(self))]
     pub async fn execute(
         &self,
         id: impl es_entity::RetryableInto<CreditFacilityProposalId>,
         approved: bool,
-    ) -> Result<CreditFacilityProposal, CoreCreditError> {
-        let credit_facility = self
-            .credit_facility_proposals
-            .approve(id.into(), approved)
+    ) -> Result<Option<CreditFacilityProposal>, CoreCreditError> {
+        let proposal = self
+            .pending_credit_facilities
+            .transition_from_proposal(id.into(), approved)
             .await?;
-        Ok(credit_facility)
+
+        Ok(proposal)
     }
 }

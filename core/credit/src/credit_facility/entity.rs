@@ -22,7 +22,7 @@ use super::{error::CreditFacilityError, interest_accrual_cycle::*};
 pub enum CreditFacilityEvent {
     Initialized {
         id: CreditFacilityId,
-        credit_facility_proposal_id: CreditFacilityProposalId,
+        pending_credit_facility_id: PendingCreditFacilityId,
         customer_id: CustomerId,
         customer_type: CustomerType,
         collateral_id: CollateralId,
@@ -151,7 +151,7 @@ impl From<(InterestAccrualCycleData, CreditFacilityLedgerAccountIds)>
 #[builder(pattern = "owned", build_fn(error = "EsEntityError"))]
 pub struct CreditFacility {
     pub id: CreditFacilityId,
-    pub credit_facility_proposal_id: CreditFacilityProposalId,
+    pub pending_credit_facility_id: PendingCreditFacilityId,
     pub customer_id: CustomerId,
     pub collateral_id: CollateralId,
     pub amount: UsdCents,
@@ -527,7 +527,7 @@ impl TryFromEvents<CreditFacilityEvent> for CreditFacility {
             match event {
                 CreditFacilityEvent::Initialized {
                     id,
-                    credit_facility_proposal_id,
+                    pending_credit_facility_id,
                     amount,
                     customer_id,
                     collateral_id,
@@ -541,7 +541,7 @@ impl TryFromEvents<CreditFacilityEvent> for CreditFacility {
                 } => {
                     builder = builder
                         .id(*id)
-                        .credit_facility_proposal_id(*credit_facility_proposal_id)
+                        .pending_credit_facility_id(*pending_credit_facility_id)
                         .amount(*amount)
                         .customer_id(*customer_id)
                         .collateral_id(*collateral_id)
@@ -569,7 +569,7 @@ pub struct NewCreditFacility {
     #[builder(setter(into))]
     pub(super) id: CreditFacilityId,
     #[builder(setter(into))]
-    pub(super) credit_facility_proposal_id: CreditFacilityProposalId,
+    pub(super) pending_credit_facility_id: PendingCreditFacilityId,
     #[builder(setter(into))]
     pub(super) ledger_tx_id: LedgerTxId,
     #[builder(setter(into))]
@@ -603,7 +603,7 @@ impl IntoEvents<CreditFacilityEvent> for NewCreditFacility {
             self.id,
             [CreditFacilityEvent::Initialized {
                 id: self.id,
-                credit_facility_proposal_id: self.credit_facility_proposal_id,
+                pending_credit_facility_id: self.pending_credit_facility_id,
                 ledger_tx_id: self.ledger_tx_id,
                 customer_id: self.customer_id,
                 customer_type: self.customer_type,
@@ -695,7 +695,7 @@ mod test {
         let id = CreditFacilityId::new();
         vec![CreditFacilityEvent::Initialized {
             id,
-            credit_facility_proposal_id: id.into(),
+            pending_credit_facility_id: PendingCreditFacilityId::from(id),
             ledger_tx_id: LedgerTxId::new(),
             customer_id: CustomerId::new(),
             customer_type: CustomerType::Individual,
