@@ -222,6 +222,12 @@ where
         Ok(())
     }
 
+    #[instrument(
+        name = "applicant.process_payload",
+        skip(self, db),
+        fields(ignore_for_sandbox = false, callback_type = tracing::field::Empty, sandbox_mode = tracing::field::Empty),
+        err
+    )]
     async fn process_payload(
         &self,
         db: &mut es_entity::DbOp<'_>,
@@ -234,6 +240,8 @@ where
                 sandbox_mode,
                 ..
             } => {
+                tracing::Span::current().record("callback_type", "ApplicantCreated");
+                tracing::Span::current().record("sandbox_mode", sandbox_mode.unwrap_or(false));
                 let res = self
                     .customers
                     .start_kyc(db, external_user_id, applicant_id)
@@ -242,6 +250,7 @@ where
                 match res {
                     Ok(_) => (),
                     Err(e) if e.was_not_found() && sandbox_mode.unwrap_or(false) => {
+                        tracing::Span::current().record("ignore_for_sandbox", true);
                         return Ok(());
                     }
                     Err(e) => return Err(e.into()),
@@ -258,6 +267,8 @@ where
                 sandbox_mode,
                 ..
             } => {
+                tracing::Span::current().record("callback_type", "ApplicantReviewed.Red");
+                tracing::Span::current().record("sandbox_mode", sandbox_mode.unwrap_or(false));
                 let res = self
                     .customers
                     .decline_kyc(db, external_user_id, applicant_id)
@@ -266,6 +277,7 @@ where
                 match res {
                     Ok(_) => (),
                     Err(e) if e.was_not_found() && sandbox_mode.unwrap_or(false) => {
+                        tracing::Span::current().record("ignore_for_sandbox", true);
                         return Ok(());
                     }
                     Err(e) => return Err(e.into()),
@@ -283,6 +295,8 @@ where
                 sandbox_mode,
                 ..
             } => {
+                tracing::Span::current().record("callback_type", "ApplicantReviewed.Green");
+                tracing::Span::current().record("sandbox_mode", sandbox_mode.unwrap_or(false));
                 // Try to parse the level name, will return error for unrecognized values
                 match level_name.parse::<SumsubVerificationLevel>() {
                     Ok(_) => {} // Level is valid, continue
@@ -301,12 +315,14 @@ where
                 match res {
                     Ok(_) => (),
                     Err(e) if e.was_not_found() && sandbox_mode.unwrap_or(false) => {
+                        tracing::Span::current().record("ignore_for_sandbox", true);
                         return Ok(());
                     }
                     Err(e) => return Err(e.into()),
                 }
             }
             SumsubCallbackPayload::Unknown => {
+                tracing::Span::current().record("callback_type", "Unknown");
                 return Err(ApplicantError::UnhandledCallbackType(format!(
                     "callback event not processed for payload {payload}",
                 )));
