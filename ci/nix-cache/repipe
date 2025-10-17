@@ -8,15 +8,15 @@ if [[ $(which ytt) == "" ]]; then
 fi
 
 target="${FLY_TARGET:-galoy}"
-team=dev
+team=nix-cache
 
 TMPDIR=""
 TMPDIR=$(mktemp -d -t repipe.XXXXXX)
 trap "rm -rf ${TMPDIR}" INT TERM QUIT EXIT
 
-ytt -f ci > ${TMPDIR}/pipeline.yml
+ytt -f ci/nix-cache > ${TMPDIR}/pipeline.yml
 
 echo "Updating pipeline @ ${target}"
 
-fly -t ${target} set-pipeline --team=${team} -p lana-bank -c ${TMPDIR}/pipeline.yml
-fly -t ${target} unpause-pipeline --team=${team} -p lana-bank
+fly -t ${target} set-pipeline --team=${team} -p lana-bank-cache -c ${TMPDIR}/pipeline.yml
+fly -t ${target} unpause-pipeline --team=${team} -p lana-bank-cache
