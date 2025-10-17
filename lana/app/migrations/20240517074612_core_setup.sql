@@ -623,7 +623,7 @@ BEGIN
   IF payload_size <= 8000 THEN
     PERFORM pg_notify('persistent_outbox_events', payload);
   ELSE
-    RAISE NOTICE 'Payload too large for notification: % bytes', payload_size;
+    RAISE NOTICE 'Lana: Payload too large for notification: % bytes. First 2000 chars: %', payload_size, left(payload, 2000);
   END IF;
   RETURN NULL;
 END;
