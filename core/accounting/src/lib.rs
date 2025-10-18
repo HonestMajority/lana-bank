@@ -220,11 +220,10 @@ where
     }
 
     #[instrument(name = "core_accounting.list_all_account_children", skip(self), err)]
-    pub async fn list_all_account_children(
+    pub async fn list_all_account_flattened(
         &self,
         sub: &<<Perms as PermissionCheck>::Audit as AuditSvc>::Subject,
         chart_ref: &str,
-        id: cala_ledger::AccountSetId,
         from: chrono::NaiveDate,
         until: Option<chrono::NaiveDate>,
     ) -> Result<Vec<LedgerAccount>, CoreAccountingError> {
@@ -238,7 +237,7 @@ where
 
         Ok(self
             .ledger_accounts()
-            .list_all_account_children(sub, &chart, id, from, until, true)
+            .list_all_account_flattened(sub, &chart, from, until, true)
             .await?)
     }
 

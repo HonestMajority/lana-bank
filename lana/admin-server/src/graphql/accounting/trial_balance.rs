@@ -43,10 +43,9 @@ impl TrialBalance {
         let (app, sub) = crate::app_and_sub_from_ctx!(ctx);
         let accounts = app
             .accounting()
-            .list_all_account_children(
+            .list_all_account_flattened(
                 sub,
                 CHART_REF.0,
-                self.entity.id,
                 self.from.into_inner(),
                 Some(self.until.into_inner()),
             )

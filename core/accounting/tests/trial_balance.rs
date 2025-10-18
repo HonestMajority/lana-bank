@@ -57,27 +57,17 @@ async fn add_chart_to_trial_balance() -> anyhow::Result<()> {
         .1
         .unwrap();
 
+    let chart = accounting.chart_of_accounts().find_by_id(chart_id).await?;
     let trial_balance_name = format!("Trial Balance #{:05}", rand::rng().random_range(0..100000));
     accounting
         .trial_balances()
         .create_trial_balance_statement(trial_balance_name.to_string())
         .await?;
 
-    let trial_balance = accounting
-        .trial_balances()
-        .trial_balance(
-            &DummySubject,
-            trial_balance_name.to_string(),
-            Utc::now().date_naive(),
-            Utc::now().date_naive(),
-        )
-        .await?;
-
     let accounts = accounting
-        .list_all_account_children(
+        .list_all_account_flattened(
             &DummySubject,
             &chart_ref,
-            trial_balance.id,
             Utc::now().date_naive(),
             Some(Utc::now().date_naive()),
         )
@@ -91,16 +81,15 @@ async fn add_chart_to_trial_balance() -> anyhow::Result<()> {
 
     let accounts = accounting
         .ledger_accounts()
-        .list_all_account_children(
+        .list_all_account_flattened(
             &DummySubject,
             &chart,
-            trial_balance.id,
             Utc::now().date_naive(),
             Some(Utc::now().date_naive()),
             false,
         )
         .await?;
-    assert_eq!(accounts.len(), 1);
+    assert_eq!(accounts.len(), 6);
 
     Ok(())
 }
