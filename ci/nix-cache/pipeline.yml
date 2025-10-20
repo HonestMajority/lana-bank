@@ -30,6 +30,8 @@ jobs:
     plan:
     - get: repo
       trigger: true
+      params:
+        fetch_tags: true
     - #@ next_version_task()
     - #@ build_release()
 

@@ -133,6 +133,8 @@ jobs:
     - in_parallel:
       - get: repo
         trigger: true
+        params:
+          fetch_tags: true
     - task: await-release-binary
       config:
         platform: linux
@@ -180,6 +182,8 @@ jobs:
               - await-release-binary
               - build-meltano-edge-image
             trigger: true
+            params:
+              fetch_tags: true
           - get: pipeline-tasks
           - get: version
           - get: #@ app_src_resource_name("admin-panel")
