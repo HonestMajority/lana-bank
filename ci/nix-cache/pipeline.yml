@@ -14,6 +14,7 @@ groups:
   - name: all
     jobs:
       - build-release-main
+      - build-release-main-tags
       - cache-dev-profile
       - populate-nix-cache-pr
   - name: main
@@ -30,9 +31,14 @@ jobs:
     plan:
     - get: repo
       trigger: true
-      params:
-        fetch_tags: true
     - #@ next_version_task()
+    - #@ build_release()
+  - name: build-release-main-tags
+    serial: true
+    plan:
+    - get: repo-tags
+      trigger: true
+    - #@ next_version_task(resource_name = "repo-tags")
     - #@ build_release()
 
   - name: cache-dev-profile
@@ -149,6 +155,17 @@ resources:
       ignore_paths:
         - "ci/*[^md]"
       fetch_tags: true
+      uri: #@ data.values.git_uri
+      branch: #@ data.values.git_branch
+      private_key: #@ data.values.github_private_key
+    webhook_token: ((webhook.secret))
+  - name: repo-tags
+    type: git
+    source:
+      ignore_paths:
+        - "ci/*[^md]"
+      fetch_tags: true
+      tag_filter: "*.*.*"
       uri: #@ data.values.git_uri
       branch: #@ data.values.git_branch
       private_key: #@ data.values.github_private_key
