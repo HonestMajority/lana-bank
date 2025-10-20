@@ -20,6 +20,7 @@ groups:
   - name: main
     jobs:
       - build-release-main
+      - build-release-main-tags
   - name: pr
     jobs:
       - cache-dev-profile
@@ -39,7 +40,7 @@ jobs:
     - get: repo-tags
       trigger: true
     - #@ next_version_task(resource_name = "repo-tags")
-    - #@ build_release()
+    - #@ build_release(resource_name = "repo-tags")
 
   - name: cache-dev-profile
     max_in_flight: 3
