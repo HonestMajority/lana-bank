@@ -24,8 +24,8 @@
           exit 1
         fi
         # Get current commit SHA
-        CURRENT_SHA=$(${pkgs.git}/bin/git rev-parse HEAD)
-        echo "Current commit SHA: $CURRENT_SHA"
+        HEAD_SHA=$(cat .git/resource/head_sha)
+        echo "Head sha of the PR: $HEAD_SHA"
         # Extract PR number from .git/resource/pr
         if [ ! -f .git/resource/pr ]; then
           echo "Error: .git/resource/pr file not found"
@@ -41,8 +41,8 @@
           echo "Error: Failed to fetch PR information from GitHub"
           exit 1
         fi
-        echo "Latest PR SHA: $LATEST_SHA"
-        if [ "$CURRENT_SHA" != "$LATEST_SHA" ]; then
+        echo "Latest PR upstream SHA: $LATEST_SHA"
+        if [ "$HEAD_SHA" != "$LATEST_SHA" ]; then
           echo "This is not the latest commit. Aborting."
           exit 1
         fi
