@@ -116,6 +116,7 @@ jobs:
       - in_parallel:
           - get: repo
             trigger: true
+            passed: [ set-next-version ]
           - { get: pipeline-tasks }
       - task: run-nextest
         privileged: true
@@ -143,6 +144,7 @@ jobs:
       - in_parallel:
           - get: repo
             trigger: true
+            passed: [ set-next-version ]
           - { get: pipeline-tasks }
       - task: run-bats
         privileged: true
@@ -167,9 +169,10 @@ jobs:
   - name: flake-check
     serial: true
     plan:
-    - in_parallel:
-      - { get: repo, trigger: true }
-      - { get: pipeline-tasks }
+    - get: repo
+      trigger: true
+      passed: [ set-next-version ]
+
     - task: nix-flake-check
       config:
         platform: linux
@@ -196,6 +199,7 @@ jobs:
     - in_parallel:
       - get: repo
         trigger: true
+        passed: [ set-next-version ]
       - get: version
         passed: [ set-next-version ]
     - task: await-release-binary
@@ -516,6 +520,7 @@ jobs:
     plan:
       - get: repo
         trigger: true
+        passed: [ set-next-version ]
       - task: build
         config:
           platform: linux
