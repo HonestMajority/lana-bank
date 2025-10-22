@@ -312,6 +312,7 @@ jobs:
               - |
                 set -euo pipefail
                 cachix use $CACHIX_CACHE_NAME
+                cd repo
                 export RELEASE_BUILD_VERSION=$(cat ../version/version)
                 nix build --impure .#lana-cli-release
                 mkdir -p ../bin
