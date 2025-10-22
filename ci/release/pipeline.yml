@@ -31,6 +31,7 @@
 groups:
   - name: lana-bank
     jobs:
+      - set-next-version
       - test-bats
       - test-integration
       - release
@@ -45,6 +46,36 @@ groups:
       - await-release-binary
 
 jobs:
+  - name: set-next-version
+    serial: true
+    plan:
+      - get: repo
+        trigger: true
+      - get: version
+      - task: next-version
+        config:
+          platform: linux
+          image_resource: #@ nix_flake_cachix_image_config()
+          inputs:
+          - name: repo
+          outputs:
+          - name: version
+          params:
+            CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
+            CACHIX_CACHE_NAME: #@ data.values.cachix_cache_name
+          run:
+            path: sh
+            args:
+            - -exc
+            - |
+              set -euo pipefail
+              cachix use $CACHIX_CACHE_NAME
+              cd repo
+              nix run ./ci#next-version > ../version/version
+      - put: version
+        params:
+          file: version/version
+
   -  #@ build_edge_image()
 
   - name: test-integration

@@ -52,13 +52,14 @@
       next-version = pkgs.writeShellScriptBin "next-version" ''
         # Try to get version from auto bump
         OUTPUT=$(${pkgs.cocogitto}/bin/cog bump --auto --dry-run 2>&1 || true)
-        # Check if no conventional commits were found
-        if ${pkgs.coreutils}/bin/echo "$OUTPUT" | ${pkgs.gnugrep}/bin/grep -q "No conventional commits for your repository that required a bump"; then
-          # Default to patch bump
-          ${pkgs.cocogitto}/bin/cog bump --patch --dry-run | ${pkgs.coreutils}/bin/tr -d '\n'
-        else
-          # Output the auto bump result
+        
+        # Check if output is a valid semver (e.g., 1.2.3)
+        if ${pkgs.coreutils}/bin/echo "$OUTPUT" | ${pkgs.gnugrep}/bin/grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"; then
+          # Output the auto bump result (it's a valid version)
           ${pkgs.coreutils}/bin/echo "$OUTPUT" | ${pkgs.coreutils}/bin/tr -d '\n'
+        else
+          # Output is not a semver, default to patch bump
+          ${pkgs.cocogitto}/bin/cog bump --patch --dry-run | ${pkgs.coreutils}/bin/tr -d '\n'
         fi
       '';
       wait-cachix-paths = pkgs.writeShellScriptBin "wait-cachix-paths" ''
