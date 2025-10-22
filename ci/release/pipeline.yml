@@ -32,6 +32,7 @@ groups:
   - name: lana-bank
     jobs:
       - set-next-version
+      - bump-version
       - test-bats
       - test-integration
       - release
@@ -52,6 +53,37 @@ jobs:
       - get: repo
         trigger: true
       - get: version
+      - task: next-version
+        config:
+          platform: linux
+          image_resource: #@ nix_flake_cachix_image_config()
+          inputs:
+          - name: repo
+          outputs:
+          - name: version
+          params:
+            CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
+            CACHIX_CACHE_NAME: #@ data.values.cachix_cache_name
+          run:
+            path: sh
+            args:
+            - -exc
+            - |
+              set -euo pipefail
+              cachix use $CACHIX_CACHE_NAME
+              cd repo
+              nix run ./ci#next-version > ../version/version
+      - put: version
+        params:
+          file: version/version
+  - name: bump-version
+    serial: true
+    plan:
+      - get: repo
+        trigger: true
+        passed: [ release ]
+      - get: version
+        passed: [ release ]
       - task: next-version
         config:
           platform: linux
@@ -164,12 +196,15 @@ jobs:
     - in_parallel:
       - get: repo
         trigger: true
+      - get: version
+        passed: [ set-next-version ]
     - task: await-release-binary
       config:
         platform: linux
         image_resource: #@ nix_flake_cachix_image_config()
         inputs:
         - name: repo
+        - name: version
         params:
           CACHIX_AUTH_TOKEN: #@ data.values.cachix_auth_token
           CACHIX_CACHE_NAME: #@ data.values.cachix_cache_name
@@ -179,12 +214,9 @@ jobs:
           - -exc
           - |
             set -euo pipefail
-            mkdir version
             cd repo
 
             cachix use $CACHIX_CACHE_NAME
-
-            nix run ./ci#next-version > ../version/version
             export RELEASE_BUILD_VERSION=$(cat ../version/version)
             
             nix build --impure .#lana-cli-release --dry-run --json | \
@@ -213,6 +245,7 @@ jobs:
             trigger: true
           - get: pipeline-tasks
           - get: version
+            passed: [ await-release-binary ]
           - get: #@ app_src_resource_name("admin-panel")
             passed:
               -  #@ build_app_edge_image_name("admin-panel")
@@ -234,7 +267,6 @@ jobs:
                 - name: repo
                 - name: version
               outputs:
-                - name: version
                 - name: artifacts
               run:
                 path: pipeline-tasks/ci/vendor/tasks/prep-release-src.sh
@@ -262,8 +294,8 @@ jobs:
             platform: linux
             image_resource: #@ nix_flake_cachix_image_config()
             inputs:
-            - name: pipeline-tasks
             - name: repo
+            - name: version
             outputs:
             - name: binaries
             params:
@@ -275,15 +307,9 @@ jobs:
               - -exc
               - |
                 set -euo pipefail
-                mkdir version
                 cachix use $CACHIX_CACHE_NAME
-
-                cd repo
-                nix run ./ci#next-version > ../version/version
                 export RELEASE_BUILD_VERSION=$(cat ../version/version)
-
                 nix build --impure .#lana-cli-release
-
                 mkdir -p ../bin
                 cp result/bin/lana-cli ../binaries/
       - in_parallel:
@@ -361,10 +387,6 @@ jobs:
           tag: artifacts/gh-release-tag
           body: artifacts/gh-release-notes.md
           globs: [artifacts/binaries/*]
-      - put: version
-        params:
-          file: version/version
-
   - name: release-docker
     serial: true
     plan:
