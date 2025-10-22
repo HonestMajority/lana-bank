@@ -32,7 +32,7 @@ groups:
   - name: lana-bank
     jobs:
       - set-next-version
-      - bump-version
+      - auto-bump-patch
       - test-bats
       - test-integration
       - release
@@ -76,7 +76,7 @@ jobs:
       - put: version
         params:
           file: version/version
-  - name: bump-version
+  - name: auto-bump-patch
     serial: true
     plan:
       - get: repo
@@ -106,7 +106,7 @@ jobs:
               nix run ./ci#next-version > ../version/version
       - put: version
         params:
-          file: version/version
+          bump: patch
 
   -  #@ build_edge_image()
 
