@@ -26,7 +26,6 @@ groups:
 
 jobs:
   - name: build-release-main
-    serial: true
     plan:
     - in_parallel:
       - get: repo
