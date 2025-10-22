@@ -69,7 +69,7 @@ cala-ledger = "0.12.1"
 cala-cel-interpreter = "0.12"
 job = "0.2.1"
 
-
+# Non galoy deps
 aes = "0.8"
 anyhow = "1.0.100"
 async-graphql = { version = "7.0.17", default-features = false, features = [
