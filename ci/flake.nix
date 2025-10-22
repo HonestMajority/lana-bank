@@ -52,7 +52,7 @@
       next-version = pkgs.writeShellScriptBin "next-version" ''
         # Try to get version from auto bump
         OUTPUT=$(${pkgs.cocogitto}/bin/cog bump --auto --dry-run 2>&1 || true)
-        
+
         # Check if output is a valid semver (e.g., 1.2.3)
         if ${pkgs.coreutils}/bin/echo "$OUTPUT" | ${pkgs.gnugrep}/bin/grep -qE "^[0-9]+\.[0-9]+\.[0-9]+$"; then
           # Output the auto bump result (it's a valid version)
