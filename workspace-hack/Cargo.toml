@@ -111,6 +111,7 @@ zeroize = { version = "1" }
 base64 = { version = "0.22" }
 byteorder = { version = "1", default-features = false, features = ["std"] }
 bytes = { version = "1", features = ["serde"] }
+cc = { version = "1", default-features = false, features = ["parallel"] }
 chrono = { version = "0.4", features = ["serde"] }
 crypto-common = { version = "0.1", default-features = false, features = ["getrandom", "std"] }
 digest = { version = "0.10", features = ["mac", "oid", "std"] }
@@ -153,7 +154,6 @@ standback = { version = "0.2", default-features = false, features = ["std"] }
 subtle = { version = "2", default-features = false, features = ["i128"] }
 syn = { version = "2", features = ["extra-traits", "fold", "full", "visit", "visit-mut"] }
 thiserror = { version = "2" }
-time-macros = { version = "0.2", default-features = false, features = ["formatting", "parsing", "serde"] }
 tiny-keccak = { version = "2", features = ["sha3", "shake"] }
 tokio = { version = "1", features = ["fs", "io-std", "io-util", "macros", "net", "parking_lot", "rt-multi-thread", "signal", "sync", "time"] }
 tokio-stream = { version = "0.1", features = ["fs", "net", "sync"] }
