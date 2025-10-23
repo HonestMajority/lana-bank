@@ -45,6 +45,7 @@ groups:
       -  #@ build_app_edge_image_name("customer-portal")
       - build-meltano-edge-image
       - await-release-binary
+      - build-dagster-edge-image
 
 jobs:
   - name: set-next-version
@@ -260,6 +261,10 @@ jobs:
             params: { skip_download: true }
             passed:
               - build-meltano-edge-image
+          - get: dagster-edge-image
+            params: { skip_download: true }
+            passed:
+              - build-dagster-edge-image
       - in_parallel:
         - do:
           - task: prep-release
@@ -409,6 +414,11 @@ jobs:
               - release
             params:
               format: oci
+          - get: dagster-edge-image
+            passed:
+              - release
+            params:
+              format: oci
       - task: prepare-docker-build
         config:
           platform: linux
@@ -442,6 +452,22 @@ jobs:
             DOCKERFILE: "repo/Dockerfile.release"
           run:
             path: build
+      - task: prepare-dagster-tags
+        config:
+          platform: linux
+          image_resource: #@ rust_task_image_config()
+          inputs:
+            - name: version
+            - name: repo
+          outputs:
+            - name: dagster-tags
+          run:
+            path: sh
+            args:
+              - -c
+              - |
+                mkdir -p dagster-tags
+                echo "$(cat version/version) $(cat repo/.git/short_ref)" > dagster-tags/tags
       - in_parallel:
           - put: latest-image
             params:
@@ -451,6 +477,10 @@ jobs:
             params:
               image: meltano-edge-image/image.tar
               additional_tags: version/version
+          - put: dagster-latest-image
+            params:
+              image: dagster-edge-image/image.tar
+              additional_tags: dagster-tags/tags
   - name: bump-image-in-chart
     plan:
       - in_parallel:
@@ -460,6 +490,9 @@ jobs:
           - get: #@ app_latest_image_resource_name("admin-panel")
           - get: #@ app_latest_image_resource_name("customer-portal")
           - get: meltano-latest-image
+            passed: [release-docker]
+            params: { skip_download: true }
+          - get: dagster-latest-image
             passed: [release-docker]
             params: { skip_download: true }
           - get: repo
@@ -481,6 +514,7 @@ jobs:
             - name: #@ app_latest_image_resource_name("admin-panel")
             - name: #@ app_latest_image_resource_name("customer-portal")
             - name: meltano-latest-image
+            - name: dagster-latest-image
             - name: pipeline-tasks
             - name: charts-repo
             - name: version
@@ -549,6 +583,37 @@ jobs:
         params:
           image: image/image.tar
 
+  - name: build-dagster-edge-image
+    serial: true
+    plan:
+      - get: repo
+        trigger: true
+      - task: build
+        config:
+          platform: linux
+          image_resource:
+            type: registry-image
+            source:
+              repository: gcr.io/kaniko-project/executor
+              tag: debug
+          inputs:
+          - name: repo
+          outputs:
+          - name: image
+          run:
+            path: /kaniko/executor
+            args:
+              - --dockerfile=dagster/Dockerfile
+              - --context=repo
+              - --use-new-run
+              - --single-snapshot
+              - --cache=false
+              - --no-push
+              - --tar-path=image/image.tar
+      - put: dagster-edge-image
+        params:
+          image: image/image.tar
+
 resources:
   - name: repo
     type: git
@@ -577,6 +642,14 @@ resources:
       password: #@ data.values.gar_registry_password
       repository: #@ public_gar_registry() + "/meltano"
 
+  - name: dagster-edge-image
+    type: registry-image
+    source:
+      tag: edge
+      username: #@ data.values.gar_registry_user
+      password: #@ data.values.gar_registry_password
+      repository: #@ public_gar_registry() + "/dagster-code-location-lana-dw"
+
   - name: meltano-latest-image
     type: registry-image
     source:
@@ -584,6 +657,14 @@ resources:
       username: #@ data.values.gar_registry_user
       password: #@ data.values.gar_registry_password
       repository: #@ public_gar_registry() + "/meltano"
+
+  - name: dagster-latest-image
+    type: registry-image
+    source:
+      tag: latest
+      username: #@ data.values.gar_registry_user
+      password: #@ data.values.gar_registry_password
+      repository: #@ public_gar_registry() + "/dagster-code-location-lana-dw"
 
   -  #@ pipeline_tasks_resource()
   -  #@ edge_image_resource(publicRepo=False)
