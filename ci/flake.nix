@@ -49,6 +49,7 @@
         echo "Latest commit - confirmed"
         exit 0
       '';
+
       next-version = pkgs.writeShellScriptBin "next-version" ''
         # Try to get version from auto bump
         OUTPUT=$(${pkgs.cocogitto}/bin/cog bump --auto --dry-run 2>&1 || true)
@@ -62,6 +63,7 @@
           ${pkgs.cocogitto}/bin/cog bump --patch --dry-run | ${pkgs.coreutils}/bin/tr -d '\n'
         fi
       '';
+
       wait-cachix-paths = pkgs.writeShellScriptBin "wait-cachix-paths" ''
         set +e  # Don't exit on non-zero return codes
 
